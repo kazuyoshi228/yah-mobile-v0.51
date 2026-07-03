@@ -26,7 +26,8 @@ export default function PlansSection({ onSelectPlan }: PlansSectionProps) {
 
   // BaaS ネイティブ: Callable Function を廃止し Firestore 直接購読に移行（AP-04）
   const plansQuery = useMemo(
-    () => query(collection(getFirebaseDb(), "plans"), where("isActive", "==", true)),
+    // 初期購入プランのみ（topup を除外）。planType は本番で全プランに設定済み
+    () => query(collection(getFirebaseDb(), "plans"), where("isActive", "==", true), where("planType", "==", "initial")),
     []
   );
   const { data: dbPlans = [] } = useFirestoreCollection<FsPlan>(

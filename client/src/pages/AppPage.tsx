@@ -79,7 +79,8 @@ export default function AppPage() {
 
   // JSON-LD Product Schema 用 — BaaSネイティブ: plansList Callable Function を廃止し Firestore 直接参照に移行（AP-04）
   const allPlansQuery = useMemo(
-    () => query(collection(getFirebaseDb(), "plans"), where("isActive", "==", true)),
+    // 初期購入プランのみ（topup を除外）。planType は本番で全プランに設定済み
+    () => query(collection(getFirebaseDb(), "plans"), where("isActive", "==", true), where("planType", "==", "initial")),
     []
   );
   const { data: allDbPlans = [] } = useFirestoreCollection<any>(() => allPlansQuery, [allPlansQuery], { realtime: false });

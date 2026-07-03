@@ -58,7 +58,8 @@ export default function PurchaseDrawer({ open, onOpenChange, initialPlanId, init
 
   // BaaSネイティブ: plansList Callable を廃止し Firestore 直接参照
   const plansQuery = useMemo(
-    () => query(collection(getFirebaseDb(), "plans"), where("isActive", "==", true)),
+    // 初期購入プランのみ（topup を除外）。planType は本番で全プランに設定済み
+    () => query(collection(getFirebaseDb(), "plans"), where("isActive", "==", true), where("planType", "==", "initial")),
     []
   );
   const { data: dbPlans = [] } = useFirestoreCollection<any>(() => plansQuery, [plansQuery], { realtime: false });
