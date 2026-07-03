@@ -214,15 +214,24 @@ export default function PurchaseDrawer({ open, onOpenChange, initialPlanId, init
 
         {/* Step indicator */}
         <div className="flex items-center gap-0 px-6 py-4 border-b border-[#D7D7D7] shrink-0">
-          {drawerStepLabels.map((s, i) => (
+          {drawerStepLabels.map((s, i) => {
+            // 完了済みのプラン選択ステップ（DURATION/DATA/PRICE = 0..2）はクリックで戻れる
+            const clickable = i < step && i <= 2;
+            return (
             <div key={i} className="flex items-center">
-              <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={!clickable}
+                onClick={() => clickable && setStep(i)}
+                aria-label={clickable ? `Change ${s}` : undefined}
+                className={`flex items-center gap-1.5 group ${clickable ? "cursor-pointer" : "cursor-default"}`}
+              >
                 <span
                   className={`font-sans font-medium w-5 h-5 flex items-center justify-center text-[9px] border transition-colors ${
                     i === step
                       ? "border-black bg-black text-white"
                       : i < step
-                        ? "border-[#D7D7D7] bg-[#D7D7D7] text-black"
+                        ? `border-[#D7D7D7] bg-[#D7D7D7] text-black ${clickable ? "group-hover:border-black group-hover:bg-black group-hover:text-white" : ""}`
                         : "border-[#D7D7D7] text-black/25"
                   }`}
                 >
@@ -231,16 +240,17 @@ export default function PurchaseDrawer({ open, onOpenChange, initialPlanId, init
                 <span
                   className={`hidden sm:block text-label text-[10px] transition-colors ${
                     i === step ? "text-black" : i < step ? "text-black/40" : "text-black/20"
-                  }`}
+                  } ${clickable ? "group-hover:text-black group-hover:underline underline-offset-2" : ""}`}
                 >
                   {s}
                 </span>
-              </div>
+              </button>
               {i < drawerStepLabels.length - 1 && (
                 <div className={`w-4 sm:w-6 h-px mx-1 ${i < step ? "bg-[#D7D7D7]" : "bg-[#EBEBEB]"}`} />
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Step content */}

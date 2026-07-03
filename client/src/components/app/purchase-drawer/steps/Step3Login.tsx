@@ -4,7 +4,7 @@ import { usePurchaseDrawerCtx } from "../context";
 
 export function Step3Login() {
   const { t } = useTranslation();
-  const { loading, isAuthenticated, user, setStep, initialPlanId } = usePurchaseDrawerCtx();
+  const { loading, isAuthenticated, user, setStep, initialPlanId, currentOpt, drawerDays } = usePurchaseDrawerCtx();
 
   return (
     <div>
@@ -38,6 +38,24 @@ export function Step3Login() {
         </div>
       ) : (
         <div>
+          {/* 選択中プランのサマリー（サインイン前に内容を明示・変更導線付き） */}
+          {currentOpt && (
+            <div className="border border-black p-4 mb-6 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-label text-black/35 mb-1">{t("drawer.yourSelection", "YOUR SELECTION")}</p>
+                <p className="font-sans font-medium text-black text-[0.95rem]">
+                  {drawerDays} {t("drawer.days")} · {currentOpt.gb} · ¥{currentOpt.priceJpy.toLocaleString()}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setStep(2)}
+                className="text-label text-[0.7rem] text-black/50 hover:text-black underline underline-offset-2 shrink-0 transition-colors"
+              >
+                {t("drawer.changePlan", "Change")}
+              </button>
+            </div>
+          )}
           <div className="border border-[#D7D7D7] p-7 mb-6 text-center">
             <div className="flex justify-center mb-4">
               <div className="w-12 h-12 border border-[#D7D7D7] rounded-full flex items-center justify-center">
