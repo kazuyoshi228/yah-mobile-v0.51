@@ -36,15 +36,16 @@ export const OrderRetryPaymentInput = z.object({
 });
 
 export const SubmitContactInquiryInput = z.object({
-  name: z.string().max(100).optional(),
+  // Firebase Callable は undefined を null に変換して送るため、任意項目は null も許容する（.nullish()）
+  name: z.string().max(100).nullish(),
   email: z.string().email().max(254),
-  location: z.string().optional().nullable(),
-  category: z.string().optional().nullable(),
-  detail: z.string().optional().nullable(),
+  location: z.string().nullish(),
+  category: z.string().nullish(),
+  detail: z.string().nullish(),
   message: z.string().max(2000),
-  orderId: z.string().optional().nullable(),
+  orderId: z.string().nullish(),
   formStartTime: z.number(), // timestamp
-  _hp: z.string().optional(), // Honeypot
+  _hp: z.string().nullish(), // Honeypot
 });
 
 export const OrdersInitCheckoutInput = z.object({
@@ -53,12 +54,12 @@ export const OrdersInitCheckoutInput = z.object({
   termsConsented: z.boolean(),
   privacyConsented: z.boolean(),
   marketingConsented: z.boolean(),
-  timezone: z.string().max(100).optional(),
+  timezone: z.string().max(100).nullish(),
 });
 
 export const OrdersInitTopupCheckoutInput = z.object({
   esimLinkUuid: z.string().min(1),
   bappyPlanId: z.string().min(1),
   origin: z.string().url(),
-  timezone: z.string().max(100).optional(),
+  timezone: z.string().max(100).nullish(),
 });
