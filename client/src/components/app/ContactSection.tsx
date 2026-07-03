@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
@@ -27,6 +27,7 @@ export default function ContactSection() {
   const [honeypot, setHoneypot] = useState("");
   const [formStartTime, setFormStartTime] = useState<number>(0);
   const { user } = useAuth();
+  const sectionRef = useRef<HTMLElement>(null);
 
   // Category key → detail keys mapping
   const CATEGORY_DETAIL_KEYS: Record<string, string[]> = {
@@ -82,8 +83,6 @@ export default function ContactSection() {
     setFormError(null);
     setIsPending(true);
     try {
-      const now = Date.now();
-      
       let orderId: string | null = null;
       if (user?.uid) {
         try {
@@ -111,6 +110,10 @@ export default function ContactSection() {
         _hp: honeypot || undefined,
       });
       setFormSent(true);
+      // 送信完了後、Contact セクションのトップ（「Get in Touch」見出し）を表示する
+      requestAnimationFrame(() => {
+        sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     } catch (err: any) {
       setFormError(err.message || "Failed to send. Please try again.");
     } finally {
@@ -119,7 +122,7 @@ export default function ContactSection() {
   };
 
   return (
-    <section id="contact" className="py-24 lg:py-32 bg-white border-t border-[#D7D7D7]">
+    <section ref={sectionRef} id="contact" className="scroll-mt-24 py-24 lg:py-32 bg-white border-t border-[#D7D7D7]">
       <div className="container max-w-2xl">
         <FadeIn>
           <p className="text-label text-black/35 mb-3">{t("contact.sectionLabel")}</p>
