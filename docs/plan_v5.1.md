@@ -1,7 +1,8 @@
 # yah.mobile v5.1 実装計画書
 
-作成: 2026-07-06 ／ 基準コミット: `2d9bd16`（dev）／ ステータス: **提案（各実装フェーズは着手前に個別承認）**
+作成: 2026-07-06 ／ 更新: 2026-07-06（v5.0本番リリース反映）／ 基準コミット: `008063e`（main=dev）／ ステータス: **提案（各実装フェーズは着手前に個別承認）**
 評価: 現行 v5.0 = **A−（89/100）**・招待制でソフトローンチ可
+リリース: **v5.0 を本番リリース済み**（`dev`→`main` FFマージ `008063e`、`firebase deploy --only hosting,firestore:rules` 完了）。functions は今セッションで本番反映済み。
 
 > 🚨 本書は v5.1 全体の**計画レイヤ**。CLAUDE.md の実装フローに従い、`functions/`・`firestore.rules`・本番/hosting デプロイは**各フェーズ着手前にユーザー承認**を得る。本書は「何を・なぜ・どの順で」を確定するためのもの。
 
@@ -21,16 +22,18 @@
 
 ## 1. 現状サマリ（このセッションの全レポート集約）
 
-### 1.1 v5.0 で完了済み（dev / 一部本番反映済み）
+### 1.1 v5.0 で完了済み（**本番リリース済み `008063e`**）
 | 区分 | 内容 | 反映 |
 |---|---|---|
-| Manus①ファネル3イベント | plan_tab_click/checkout_start/order_complete 発火 | dev channel ✅ / 本番hosting ⬜ |
-| Manus③ zh-TW | 繁体字 167キー補完（100%） | dev channel ✅ / 本番hosting ⬜ |
-| Manus④ セキュリティヘッダ | HSTS/nosniff/X-Frame-Options | dev channel ✅ / 本番hosting ⬜ |
+| Manus①ファネル3イベント | plan_tab_click/checkout_start/order_complete 発火 | **本番hosting ✅** |
+| Manus③ zh-TW | 繁体字 167キー補完（100%） | **本番hosting ✅** |
+| Manus④ セキュリティヘッダ | HSTS/nosniff/X-Frame-Options | **本番hosting ✅**（yah.mobi で検証済） |
 | Manus⑤ 購入確認メール | checkout.session.completed で受付メール | **本番functions ✅** |
-| Manus② テスト補強 | retry escalation/recovery・bappy notify・orders IDOR | dev ✅ |
-| ⑦ useAuthユーザーdoc一本化 | onUserCreated に集約 | dev channel ✅ / 本番hosting ⬜ |
-| 旧hardening①〜⑤ | plans Rules検証・hungOrderMonitor・LLM slice 等 | 本番 ✅ |
+| Manus② テスト補強 | retry escalation/recovery・bappy notify・orders IDOR | dev ✅（テストのみ・デプロイ対象外） |
+| ⑦ useAuthユーザーdoc一本化 | onUserCreated に集約 | **本番hosting ✅** |
+| サポート文言 A/B | 人的チーム含意の除去・応答SLA実値化（5言語） | **本番hosting ✅**（→ [design_support_ai_chat_copy.md](./design_support_ai_chat_copy.md)） |
+| plans Rules検証 | 型・範囲・IDORバリデーション | **本番firestore:rules ✅** |
+| 旧hardening①〜⑤ | hungOrderMonitor・Bappy障害通知・LLM slice 等 | **本番functions ✅** |
 
 ### 1.2 リリース評価（採点・Webhook認証は採点外）
 | 領域 | グレード |
