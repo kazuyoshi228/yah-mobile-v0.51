@@ -17,7 +17,8 @@
     "test:rules": "firebase emulators:exec --only firestore \"vitest run --config vitest.rules.config.ts\"",
     "emulators": "firebase emulators:start --only auth,firestore,storage,ui",
     "emulators:export": "firebase emulators:export ./emulator-data",
-    "emulators:import": "firebase emulators:start --only auth,firestore,storage,ui --import=./emulator-data"
+    "emulators:import": "firebase emulators:start --only auth,firestore,storage,ui --import=./emulator-data",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -77,6 +78,7 @@
   "devDependencies": {
     "@eslint/js": "^9.15.0",
     "@firebase/rules-unit-testing": "^5.0.1",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/typography": "^0.5.15",
     "@tailwindcss/vite": "^4.1.3",
     "@testing-library/jest-dom": "^6.9.1",

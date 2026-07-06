@@ -133,3 +133,8 @@ functions/lib/
 
 # CI workflows: workflowスコープ付きトークンで別途追加する（初回pushで弾かれるため一旦除外）
 .github/workflows/
+
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
