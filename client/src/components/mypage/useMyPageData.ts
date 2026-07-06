@@ -94,5 +94,16 @@ export function useMyPageData(uid: string | undefined) {
       .filter((x) => x !== null) as { link: EsimLink; planName: string | null; validityDays: number | null }[];
   }, [orders, esimLinks, planMap]);
 
-  return { orders, ordersLoading, esimLinks, esimByOrderId, activeEsimList };
+  // 注文の planName を plans から解決（古い注文は planName 未保存のため「Japan eSIM」になる）
+  const resolvedOrders = useMemo(() => {
+    if (!orders) return orders;
+    return orders.map((o) => {
+      if (o.planName) return o;
+      const oo = o as unknown as { bappyPlanId?: string; planId?: string };
+      const plan = (oo.bappyPlanId && planMap.get(oo.bappyPlanId)) || (oo.planId && planMap.get(oo.planId)) || null;
+      return plan?.name ? { ...o, planName: plan.name } : o;
+    });
+  }, [orders, planMap]);
+
+  return { orders: resolvedOrders, ordersLoading, esimLinks, esimByOrderId, activeEsimList };
 }
