@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useCallableMutation, CALLABLE } from "@/lib/callable";
+import { trackEvent } from "@/lib/analytics";
 import { getFirebaseDb } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import type { PlanOption } from "../types";
@@ -43,6 +44,11 @@ export function usePurchaseCheckout(currentOpt: PlanOption | null, user: Checkou
 
     setPurchaseError(null);
     setIsPurchasing(true);
+    trackEvent("checkout_start", {
+      bappyPlanId: currentOpt.bappyPlanId || currentOpt.planId,
+      gb: currentOpt.gb,
+      priceJpy: currentOpt.priceJpy,
+    });
 
     try {
       const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;

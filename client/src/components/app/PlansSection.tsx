@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { collection, query, where, orderBy, limit } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 import { useFirestoreCollection } from "@/hooks/useFirestoreCollection";
+import { trackEvent } from "@/lib/analytics";
 import FadeIn from "./FadeIn";
 import { FsPlan } from "../../../../shared/types";
 import {
@@ -49,7 +50,7 @@ export default function PlansSection({ onSelectPlan }: PlansSectionProps) {
   const planOptions = groupPlansByDays(dbPlans as FsPlan[]);
   const gbOptions: PlanOption[] = planOptions[selectedDays] ?? [];
 
-  const handleDaySelect = (d: number) => { setSelectedDays(d); setSelectedGb(null); };
+  const handleDaySelect = (d: number) => { setSelectedDays(d); setSelectedGb(null); trackEvent("plan_tab_click", { days: d }); };
 
   const selectedOption = gbOptions.find((o) => o.gb === selectedGb);
 

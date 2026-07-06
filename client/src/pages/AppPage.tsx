@@ -198,6 +198,7 @@ export default function AppPage() {
       if (paymentParam === "complete") {
         // Stripe Embedded Checkoutの返り先：eSIM表示画面を表示
         const orderIdParam = params.get("orderId");
+        trackEvent("order_complete", { orderId: orderIdParam ?? undefined });
         if (orderIdParam) setDrawerOrderId(orderIdParam);
         setDrawerInitialStep(6);
         setDrawerOpen(true);
