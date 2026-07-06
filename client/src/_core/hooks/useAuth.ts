@@ -3,7 +3,7 @@ import {
   signOutFirebase,
   getFirebaseDb,
 } from "@/lib/firebase";
-import { doc, onSnapshot, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import type { FirebaseUser } from "@/lib/firebase";
@@ -56,8 +56,8 @@ export function useAuth(options?: UseAuthOptions) {
           setIsAdmin(false);
         }
 
-        // ピュアBaaS設計: ユーザードキュメントの初期作成はフロントから直接setDocで行う（安全なFirestore rulesの下）
-        // onUserCreatedトリガーもバックアップとして稼働する。
+        // ユーザードキュメントの初期作成は onUserCreated トリガー（role 判定 + Custom Claims 付与）に一本化。
+        // フロントからは作成しない（旧: client 直 setDoc は二重作成のため廃止）。
       }
     });
     return unsubAuth;
@@ -74,21 +74,9 @@ export function useAuth(options?: UseAuthOptions) {
         if (docSnap.exists()) {
           setDbUser({ id: docSnap.id, ...docSnap.data() } as FsUser);
         } else {
-          // ドキュメントが存在しない場合は、バックグラウンドで作成処理を走らせる
-          const ts = serverTimestamp();
-          setDoc(userDocRef, {
-            uid: fbUser.uid,
-            name: fbUser.displayName ?? fbUser.email?.split("@")[0] ?? "User",
-            email: fbUser.email ?? "",
-            loginMethod: "google",
-            role: "user",
-            status: "active",
-            createdAt: ts,
-            lastSignedIn: ts,
-            updatedAt: ts,
-          }, { merge: true }).catch((error) => {
-            console.error("[useAuth] Failed to auto-create user document:", error);
-          });
+          // doc の作成は onUserCreated トリガー（role 判定 + Custom Claims 付与の権威）に一本化。
+          // 生成待ちの間は dbUser を null のままにし、state は fbUser 由来の最低限情報で構築する。
+          setDbUser(null);
         }
       },
       (error) => {
