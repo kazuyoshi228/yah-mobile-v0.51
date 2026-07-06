@@ -137,7 +137,8 @@ yah.mobile Analytics Summary (${period}):
       { role: "user", content: summaryText },
     ],
   });
-  const insight = response.choices?.[0]?.message?.content ?? "インサイトを生成できませんでした。";
+  // LLM 出力は長さ制限（異常に長い応答が Firestore 保存/UI に影響しないよう上限5000文字）
+  const insight = (response.choices?.[0]?.message?.content ?? "インサイトを生成できませんでした。").slice(0, 5000);
 
   const last24hMs = Date.now() - 24 * 60 * 60 * 1000;
   const last24h = events.filter((e) => e.createdAt > last24hMs).length;

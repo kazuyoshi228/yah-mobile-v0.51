@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
-import { onSnapshot, doc, getDoc, collection, query, where, updateDoc, QuerySnapshot, DocumentData } from "firebase/firestore";
+import { onSnapshot, doc, getDoc, collection, query, where, updateDoc, serverTimestamp, QuerySnapshot, DocumentData } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 import { safeUrl } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -69,8 +69,11 @@ export default function OrderDetailPage({ params }: { params: { orderId: string 
     if (!esimLink?.id) return;
     setIsSyncing(true);
     try {
+      // Rules は syncRequestedAt / updatedAt == request.time（Timestamp）を要求するため
+      // クライアント時刻ではなく serverTimestamp() を使う（両方必須）
       await updateDoc(doc(getFirebaseDb(), "esim_links", esimLink.id), {
-        syncRequestedAt: Date.now(),
+        syncRequestedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
       setSyncResult({ synced: true });
     } catch (err: any) {

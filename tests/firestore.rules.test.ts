@@ -18,6 +18,7 @@ import {
   setDoc,
   getDoc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -112,17 +113,54 @@ describe("users", () => {
 
 // ─── plans ──────────────────────────────────────────────────────────────────
 describe("plans", () => {
+  // 妥当なプラン（PlansTab が書く形：priceJpy/validityDays は int, isActive は bool）
+  const validPlan = (overrides: Record<string, unknown> = {}) => ({
+    bappyPlanId: "JP_7D_1GB",
+    name: "Japan / 1GB / 7days",
+    priceJpy: 990,
+    validityDays: 7,
+    isActive: true,
+    ...overrides,
+  });
+
   it("誰でも（未認証でも）読める", async () => {
     await seed("plans/p1", { bappyPlanId: "JP_3D_1GB", priceJpy: 990, isActive: true });
     await assertSucceeds(getDoc(doc(anon(), "plans/p1")));
   });
 
   it("一般ユーザーは書き込めない", async () => {
-    await assertFails(setDoc(doc(alice(), "plans/p2"), { bappyPlanId: "X", priceJpy: 1, isActive: true }));
+    await assertFails(setDoc(doc(alice(), "plans/p2"), validPlan()));
   });
 
-  it("管理者は書き込める", async () => {
-    await assertSucceeds(setDoc(doc(admin(), "plans/p2"), { bappyPlanId: "X", priceJpy: 1, isActive: true }));
+  it("管理者は妥当なプランを書き込める", async () => {
+    await assertSucceeds(setDoc(doc(admin(), "plans/p2"), validPlan()));
+  });
+
+  it("priceJpy が負値/0/範囲外だと拒否", async () => {
+    await assertFails(setDoc(doc(admin(), "plans/p3"), validPlan({ priceJpy: -1 })));
+    await assertFails(setDoc(doc(admin(), "plans/p3"), validPlan({ priceJpy: 0 })));
+    await assertFails(setDoc(doc(admin(), "plans/p3"), validPlan({ priceJpy: 100000 })));
+  });
+
+  it("priceJpy/validityDays が文字列（型不正）だと拒否", async () => {
+    await assertFails(setDoc(doc(admin(), "plans/p4"), validPlan({ priceJpy: "990" as unknown as number })));
+    await assertFails(setDoc(doc(admin(), "plans/p4"), validPlan({ validityDays: "7" as unknown as number })));
+  });
+
+  it("validityDays が0/負/過大だと拒否", async () => {
+    await assertFails(setDoc(doc(admin(), "plans/p5"), validPlan({ validityDays: 0 })));
+    await assertFails(setDoc(doc(admin(), "plans/p5"), validPlan({ validityDays: 4000 })));
+  });
+
+  it("isActive が非boolean / name欠落だと拒否", async () => {
+    await assertFails(setDoc(doc(admin(), "plans/p6"), validPlan({ isActive: "true" as unknown as boolean })));
+    const { name: _omit, ...noName } = validPlan();
+    await assertFails(setDoc(doc(admin(), "plans/p6"), noName));
+  });
+
+  it("管理者は削除できる", async () => {
+    await seed("plans/pdel", validPlan());
+    await assertSucceeds(deleteDoc(doc(admin(), "plans/pdel")));
   });
 });
 

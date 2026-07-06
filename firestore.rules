@@ -63,7 +63,19 @@ service cloud.firestore {
     // ─── plans ───────────────────────────────────────────────────────────────────
     match /plans/{planId} {
       allow read: if true;
-      allow write: if isAdmin();
+      // delete は request.resource が無いため分離（管理者のみ）
+      allow delete: if isAdmin();
+      // create/update は型・範囲を検証（PlansTab は priceJpy/validityDays を int, isActive を bool で書き込む）
+      allow create, update: if isAdmin()
+        && request.resource.data.priceJpy is int
+        && request.resource.data.priceJpy > 0
+        && request.resource.data.priceJpy < 100000
+        && request.resource.data.validityDays is int
+        && request.resource.data.validityDays > 0
+        && request.resource.data.validityDays <= 3650
+        && request.resource.data.isActive is bool
+        && request.resource.data.bappyPlanId is string
+        && request.resource.data.name is string;
     }
 
     // ─── currency_rates ──────────────────────────────────────────────────────────

@@ -1,6 +1,12 @@
 import * as logger from "firebase-functions/logger";
 import { onRequest } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
 import { collections, updateEsimLink } from "./db";
+import { notifyOwner } from "./adapters/notify";
+
+// オーナー通知（Forge/Slack）用シークレット
+const forgeApiKey = defineSecret("BUILT_IN_FORGE_API_KEY");
+const slackWebhookUrl = defineSecret("SLACK_WEBHOOK_URL");
 
 // 受理する eventType の許可リスト（未知のイベントは無視してログのみ）
 const KNOWN_EVENT_TYPES = new Set([
@@ -26,6 +32,7 @@ export const bappyWebhook = onRequest(
   {
     region: "asia-northeast1",
     timeoutSeconds: 30,
+    secrets: [forgeApiKey, slackWebhookUrl],
   },
   async (req, res) => {
     if (req.method !== "POST") {
@@ -104,6 +111,15 @@ export const bappyWebhook = onRequest(
       res.json({ received: true });
     } catch (err) {
       logger.error(`[bappyWebhook] Error processing event for ${bappyLinkUuid}:`, err);
+      // 処理失敗をオーナーに通知（ログを見ていなくても気づけるように）。通知失敗は握りつぶす。
+      try {
+        await notifyOwner({
+          title: "Bappy Webhook 処理失敗",
+          content: `link=${bappyLinkUuid ?? "?"} event=${eventType ?? "?"}\n${String(err).slice(0, 500)}`,
+        });
+      } catch (notifyErr) {
+        logger.error("[bappyWebhook] notifyOwner failed:", notifyErr);
+      }
       res.status(500).send("Internal server error");
     }
   }
