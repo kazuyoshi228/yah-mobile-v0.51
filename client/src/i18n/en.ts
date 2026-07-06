@@ -298,6 +298,16 @@ const en = {
     loginConsentSuffix: ".",
   },
   mypage: {
+    notifications: {
+      title: "Notifications",
+      empty: "No new notifications",
+      unreadAria: "Notifications ({{count}} unread)",
+      types: {
+        order_delayed: { title: "eSIM issuance delayed", body: "Your eSIM is taking a little longer. We're automatically retrying — this usually completes within 15 minutes." },
+        order_fulfilled: { title: "Your eSIM is ready", body: "Your eSIM was issued successfully. Check it in My Page." },
+        order_failed: { title: "eSIM issuance failed", body: "We couldn't issue your eSIM. Please contact support or request a refund." },
+      },
+    },
     title: "My eSIM",
     noEsim: "No eSIM yet.",
     noEsimDesc: "Purchase a plan to get your Japan eSIM.",

@@ -34,11 +34,36 @@ export function deriveEsimStatus(esim: EsimStatusInput): EsimStatusResult {
   const expired =
     esim.status === "expired" ||
     (esim.expiryDate != null && new Date(esim.expiryDate).getTime() < now);
-  const activated = esim.status === "active" || esim.lastActiveAt != null;
+  // 「実際に有効化された」証跡で判定する。
+  // ※ webhooks.ts の fulfillEsim は発行時に status="active" を即セットするため、
+  //   status==="active" は「発行済み」を意味し、端末での有効化ではない。
+  //   有効化は lastActiveAt（webhooks_bappy が付与）／データ消費（remaining<total）で判定する。
+  const activated =
+    esim.lastActiveAt != null ||
+    (esim.dataRemainingMb != null && esim.dataTotalMb != null && esim.dataRemainingMb < esim.dataTotalMb);
 
   if (expired) return { key: "expired", label: "Expired", dotClass: "bg-gray-400", pulse: false };
   if (!activated) return { key: "ready", label: "Ready to Install", dotClass: "bg-blue-400", pulse: false };
   if (isLowData(esim.dataRemainingMb, esim.dataTotalMb))
     return { key: "topup", label: "Need Top-up", dotClass: "bg-orange-400", pulse: false };
   return { key: "active", label: "Active", dotClass: "bg-green-400", pulse: true };
+}
+
+/**
+ * eSIM の期限表示を返す。
+ * - 有効化済み（expiryDate あり）→ 実際の期限日時「Expires <日時>」
+ * - 未有効化（expiryDate なし）→ plan の有効日数で「Valid for N days · from activation」
+ *   （実eSIMの期限は有効化時にBappyが付与するため、未有効化では日付が存在しない）
+ */
+export function formatEsimExpiry(
+  esim: { expiryDate?: Date | string | null },
+  validityDays?: number | null,
+): string | null {
+  if (esim.expiryDate) {
+    return `Expires ${new Date(esim.expiryDate).toLocaleString("en-US", {
+      year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+    })}`;
+  }
+  if (validityDays) return `Valid for ${validityDays} days · from activation`;
+  return null;
 }

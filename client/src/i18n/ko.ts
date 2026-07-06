@@ -298,6 +298,16 @@ const ko = {
     loginConsentSuffix: "에 동의하는 것으로 간주됩니다.",
   },
   mypage: {
+    notifications: {
+      title: "알림",
+      empty: "새 알림이 없습니다",
+      unreadAria: "알림 ({{count}}개 안 읽음)",
+      types: {
+        order_delayed: { title: "eSIM 발급 지연", body: "eSIM 발급이 지연되고 있습니다. 자동으로 재시도 중이며 보통 15분 이내에 완료됩니다." },
+        order_fulfilled: { title: "eSIM이 준비되었습니다", body: "eSIM이 정상적으로 발급되었습니다. 마이페이지에서 확인하세요." },
+        order_failed: { title: "eSIM 발급 실패", body: "eSIM을 발급하지 못했습니다. 고객지원에 문의하거나 환불을 요청해 주세요." },
+      },
+    },
     title: "내 eSIM",
     noEsim: "아직 eSIM이 없습니다.",
     noEsimDesc: "플랜을 구매하여 일본 eSIM을 받으세요.",

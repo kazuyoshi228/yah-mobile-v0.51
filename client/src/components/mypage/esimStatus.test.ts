@@ -1,10 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { deriveEsimStatus, isLowData } from "./esimStatus";
+import { deriveEsimStatus, isLowData, formatEsimExpiry } from "./esimStatus";
 
 describe("deriveEsimStatus", () => {
   it("未有効化（lastActiveAt無し・status非active）→ ready", () => {
     expect(deriveEsimStatus({ status: null, lastActiveAt: null }).key).toBe("ready");
     expect(deriveEsimStatus({ status: "inactive" }).key).toBe("ready");
+  });
+
+  it("発行済み(status='active')でも未インストール(lastActiveAt無し・データ未消費)なら ready", () => {
+    // fulfillEsim は発行時に status='active' を即セットする。実データ相当のケース。
+    expect(deriveEsimStatus({
+      status: "active", lastActiveAt: null, dataRemainingMb: 1000, dataTotalMb: 1000, expiryDate: null,
+    }).key).toBe("ready");
   });
 
   it("有効化済み・データ十分 → active（パルスあり）", () => {
@@ -41,5 +48,19 @@ describe("isLowData", () => {
   it("10%境界", () => {
     expect(isLowData(500, 5000)).toBe(true);
     expect(isLowData(501, 5000)).toBe(false);
+  });
+});
+
+describe("formatEsimExpiry", () => {
+  it("expiryDate あり → Expires <日時>", () => {
+    const s = formatEsimExpiry({ expiryDate: "2026-08-05T00:30:00Z" }, 7);
+    expect(s).toMatch(/^Expires /);
+  });
+  it("expiryDate なし → Valid for N days（validityDays 由来）", () => {
+    expect(formatEsimExpiry({ expiryDate: null }, 7)).toBe("Valid for 7 days · from activation");
+  });
+  it("expiryDate も validityDays も無ければ null", () => {
+    expect(formatEsimExpiry({ expiryDate: null }, null)).toBeNull();
+    expect(formatEsimExpiry({ expiryDate: null }, undefined)).toBeNull();
   });
 });

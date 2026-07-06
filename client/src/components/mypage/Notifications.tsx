@@ -13,12 +13,14 @@ import {
 } from "firebase/firestore";
 import { motion } from "framer-motion";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Spinner } from "./Spinner";
 
 // ─── 未読通知バッジ ────────────────────────────────────────────────────────────
 
 export function NotificationBell({ onOpen }: { onOpen: () => void }) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [count, setCount] = useState(0);
 
   useEffect(() => {
@@ -38,7 +40,9 @@ export function NotificationBell({ onOpen }: { onOpen: () => void }) {
     <button
       onClick={onOpen}
       className="relative inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-black/5 transition-colors duration-200"
-      aria-label={`Notifications${count > 0 ? ` (${count} unread)` : ""}`}
+      aria-label={count > 0
+        ? t("mypage.notifications.unreadAria", { count, defaultValue: `Notifications (${count} unread)` })
+        : t("mypage.notifications.title", { defaultValue: "Notifications" })}
     >
       <svg viewBox="0 0 24 24" className="w-5 h-5 fill-none stroke-current stroke-[1.5]" strokeLinecap="round" strokeLinejoin="round">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -63,12 +67,14 @@ type FsNotif = {
   id: string;
   title: string;
   body?: string | null;
+  type?: string | null;
   isRead: string;
   createdAt: number;
 };
 
 export function NotificationPanel({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [unread, setUnread] = useState<FsNotif[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   // AP-05/AP-09: notificationsMarkRead Callable Function 不要 → Firestore 直接 update
@@ -102,21 +108,27 @@ export function NotificationPanel({ onClose }: { onClose: () => void }) {
       className="absolute right-0 top-full mt-2 w-80 bg-white border border-black/10 shadow-xl z-50"
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-black/8">
-        <p className="text-label text-[0.6875rem] text-black/50">NOTIFICATIONS</p>
+        <p className="text-label text-[0.6875rem] text-black/50">{t("mypage.notifications.title", { defaultValue: "Notifications" })}</p>
         <button onClick={onClose} className="font-sans text-black/30 hover:text-black text-lg leading-none">×</button>
       </div>
       <div className="max-h-80 overflow-y-auto">
         {isLoading ? (
           <div className="py-8 flex justify-center"><Spinner /></div>
         ) : !unread || unread.length === 0 ? (
-          <p className="font-sans text-black/30 text-sm text-center py-8">No new notifications</p>
+          <p className="font-sans text-black/30 text-sm text-center py-8">{t("mypage.notifications.empty", { defaultValue: "No new notifications" })}</p>
         ) : (
           unread.map((n) => (
             <div key={n.id} className="px-4 py-3 border-b border-black/5 hover:bg-black/2 transition-colors duration-150">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <p className="font-sans text-black text-sm font-medium mb-0.5">{n.title}</p>
-                  {n.body && <p className="font-sans text-black/40 text-xs leading-[1.6]">{n.body}</p>}
+                  <p className="font-sans text-black text-sm font-medium mb-0.5">
+                    {t(`mypage.notifications.types.${n.type}.title`, { defaultValue: n.title })}
+                  </p>
+                  {n.body && (
+                    <p className="font-sans text-black/40 text-xs leading-[1.6]">
+                      {t(`mypage.notifications.types.${n.type}.body`, { defaultValue: n.body })}
+                    </p>
+                  )}
                 </div>
                 <button
                   onClick={() => handleMarkRead(n.id)}

@@ -15,10 +15,30 @@ import type { EsimLink, OrderRow, EsimPreview, EsimPreviewMap } from "./types";
  * MyPage の注文・eSIM リンクを Firestore onSnapshot でリアルタイム購読し、
  * 表示用の派生データ（orderId→eSIMプレビュー Map、アクティブeSIM一覧）を返す。
  */
+// plan（bappyPlanId / doc.id）→ { validityDays, name } の索引
+type PlanInfo = { validityDays?: number | null; name?: string | null };
+
 export function useMyPageData(uid: string | undefined) {
   const [orders, setOrders] = useState<OrderRow[] | null>(null);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [esimLinks, setEsimLinks] = useState<EsimLink[] | null>(null);
+  const [planMap, setPlanMap] = useState<Map<string, PlanInfo>>(new Map());
+
+  // 有効期間（validityDays）等を注文の bappyPlanId / planId から引くための plans 索引
+  useEffect(() => {
+    const q = query(collection(getFirebaseDb(), "plans"), where("isActive", "==", true));
+    const unsub = onSnapshot(q, (snap: QuerySnapshot<DocumentData>) => {
+      const m = new Map<string, PlanInfo>();
+      snap.docs.forEach((d) => {
+        const p = d.data() as { bappyPlanId?: string; validityDays?: number; name?: string };
+        const info: PlanInfo = { validityDays: p.validityDays ?? null, name: p.name ?? null };
+        m.set(d.id, info);
+        if (p.bappyPlanId) m.set(p.bappyPlanId, info);
+      });
+      setPlanMap(m);
+    });
+    return unsub;
+  }, []);
 
   useEffect(() => {
     if (!uid) {
@@ -59,16 +79,20 @@ export function useMyPageData(uid: string | undefined) {
   );
 
   // アクティブeSIMリスト（fulfilled かつ esimLink がある全注文）
+  // plan を join して planName / validityDays を補完する
   const activeEsimList = useMemo(() => {
     if (!orders || !esimLinks) return [];
     return orders
       .filter((o) => o.status === "fulfilled")
       .map((o) => {
         const link = esimLinks.find((e) => e.orderId === o.id) ?? null;
-        return link ? { link, planName: null } : null;
+        if (!link) return null;
+        const oo = o as unknown as { bappyPlanId?: string; planId?: string };
+        const plan = (oo.bappyPlanId && planMap.get(oo.bappyPlanId)) || (oo.planId && planMap.get(oo.planId)) || null;
+        return { link, planName: plan?.name ?? o.planName ?? null, validityDays: plan?.validityDays ?? null };
       })
-      .filter((x) => x !== null) as { link: EsimLink; planName: string | null }[];
-  }, [orders, esimLinks]);
+      .filter((x) => x !== null) as { link: EsimLink; planName: string | null; validityDays: number | null }[];
+  }, [orders, esimLinks, planMap]);
 
   return { orders, ordersLoading, esimLinks, esimByOrderId, activeEsimList };
 }

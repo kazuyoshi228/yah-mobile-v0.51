@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { safeUrl } from "@/lib/utils";
 import type { EsimLink } from "./types";
-import { deriveEsimStatus } from "./esimStatus";
+import { deriveEsimStatus, formatEsimExpiry } from "./esimStatus";
 
 function detectDevice(): "ios" | "android" | "other" {
   const ua = navigator.userAgent.toLowerCase();
@@ -14,19 +14,18 @@ function detectDevice(): "ios" | "android" | "other" {
 export function ActiveEsimSummary({
   esimLink,
   planName,
+  validityDays,
   onViewDetail,
 }: {
   esimLink: EsimLink;
   planName?: string | null;
+  validityDays?: number | null;
   onViewDetail: () => void;
 }) {
   const device = detectDevice();
   const esimStatus = deriveEsimStatus(esimLink);
-  const expiryDisplay = esimLink.expiryDate
-    ? new Date(esimLink.expiryDate).toLocaleString("en-US", {
-        year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-      })
-    : null;
+  // 有効化済み→実期限、未有効化→「Valid for N days · from activation」
+  const expiryDisplay = formatEsimExpiry(esimLink, validityDays);
   const activatedDisplay = esimLink.lastActiveAt
     ? new Date(esimLink.lastActiveAt).toLocaleString("en-US", {
         year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
@@ -51,14 +50,11 @@ export function ActiveEsimSummary({
           <p className="font-sans font-medium text-white text-lg leading-tight">
             {planName ?? "eSIM Ready"}
           </p>
-          {esimLink.iccid && (
-            <p className="font-sans text-white/30 text-xs mt-0.5 font-mono">{esimLink.iccid}</p>
-          )}
           {activatedDisplay && (
             <p className="font-sans text-white/40 text-xs mt-1">Activated {activatedDisplay}</p>
           )}
           {expiryDisplay && (
-            <p className="font-sans text-white/40 text-xs mt-1">Expires {expiryDisplay}</p>
+            <p className="font-sans text-white/40 text-xs mt-1">{expiryDisplay}</p>
           )}
         </div>
         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-white/10 text-white text-[0.6rem] font-sans font-medium tracking-[0.15em] uppercase whitespace-nowrap">

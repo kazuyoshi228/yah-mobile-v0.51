@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { AnimatePresence, motion } from "framer-motion";
-import { onSnapshot, doc, collection, query, where, updateDoc, QuerySnapshot, DocumentData } from "firebase/firestore";
+import { onSnapshot, doc, getDoc, collection, query, where, updateDoc, QuerySnapshot, DocumentData } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
 import { safeUrl } from "@/lib/utils";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -54,6 +54,16 @@ export default function OrderDetailPage({ params }: { params: { orderId: string 
     });
     return unsub;
   }, [orderId, order]);
+
+  // 期限「常に表示」用：未有効化時は plan.validityDays を表示するため注文の planId から取得
+  const [validityDays, setValidityDays] = useState<number | null>(null);
+  useEffect(() => {
+    const planId = (order as unknown as { planId?: string } | null)?.planId;
+    if (!planId) { setValidityDays(null); return; }
+    getDoc(doc(getFirebaseDb(), "plans", planId))
+      .then((snap) => setValidityDays(snap.exists() ? ((snap.data() as { validityDays?: number }).validityDays ?? null) : null))
+      .catch(() => setValidityDays(null));
+  }, [order]);
 
   const handleSync = useCallback(async () => {
     if (!esimLink?.id) return;
@@ -142,9 +152,13 @@ export default function OrderDetailPage({ params }: { params: { orderId: string 
     { label: "Status",     value: <StatusBadge status={order.status} /> },
     { label: "Order Date", value: date },
     ...(esimStatus ? [{ label: "eSIM Status", value: esimStatus.label }] : []),
-    ...(esimLink?.iccid ? [{ label: "ICCID", value: esimLink.iccid }] : []),
     ...(activatedDisplay ? [{ label: "Activated", value: activatedDisplay }] : []),
-    ...(expiryDisplay ? [{ label: "Expires", value: expiryDisplay }] : []),
+    // 期限は常に表示：有効化済み→実期限日時、未有効化→有効期間（validityDays）
+    ...(expiryDisplay
+      ? [{ label: "Expires", value: expiryDisplay }]
+      : validityDays
+        ? [{ label: "Validity", value: `${validityDays} days · from activation` }]
+        : []),
   ];
 
   return (
@@ -287,7 +301,7 @@ export default function OrderDetailPage({ params }: { params: { orderId: string 
                     Retry sync
                   </button>
                   <a
-                    href="mailto:support@yah.mobi"
+                    href="/app#contact"
                     className="text-label text-[0.6rem] inline-block border border-red-300 text-red-600 px-4 py-2 hover:bg-red-100 transition-colors duration-200"
                   >
                     Contact support →
@@ -300,19 +314,6 @@ export default function OrderDetailPage({ params }: { params: { orderId: string 
               </div>
             )}
 
-            <div className="flex flex-wrap gap-3 pt-4 border-t border-black/8">
-              <a
-                href="mailto:support@yah.mobi"
-                className="text-label text-[0.6875rem] inline-block border border-black/20 text-black px-6 py-3 hover:border-black/60 transition-colors duration-200"
-              >
-                Contact support
-              </a>
-              <Link href="/app">
-                <span className="text-label text-[0.6875rem] inline-block border border-black/20 text-black px-6 py-3 hover:border-black/60 transition-colors duration-200 cursor-pointer">
-                  Buy another eSIM
-                </span>
-              </Link>
-            </div>
           </motion.div>
         </div>
       </main>

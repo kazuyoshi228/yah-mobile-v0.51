@@ -149,7 +149,7 @@ export interface FsNotification {
   userId: string;
   title: string;
   body: string;
-  type: "order_fulfilled" | "order_failed" | "topup_success" | "data_threshold_80" | "data_threshold_100" | "refund_completed" | "system";
+  type: "order_delayed" | "order_fulfilled" | "order_failed" | "topup_success" | "data_threshold_80" | "data_threshold_100" | "refund_completed" | "system";
   isRead: "true" | "false";
   orderId?: string | null;
   createdAt: number;

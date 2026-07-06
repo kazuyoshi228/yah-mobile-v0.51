@@ -114,6 +114,7 @@ export default function MyPage() {
                     <ActiveEsimSummary
                       esimLink={activeEsimData.link}
                       planName={activeEsimData.planName}
+                      validityDays={activeEsimData.validityDays}
                       onViewDetail={() => setLocation(`/mypage/orders/${activeEsimData.link.orderId}`)}
                     />
                   )}

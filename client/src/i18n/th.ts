@@ -298,6 +298,16 @@ const th = {
     loginConsentSuffix: "ของเรา",
   },
   mypage: {
+    notifications: {
+      title: "การแจ้งเตือน",
+      empty: "ไม่มีการแจ้งเตือนใหม่",
+      unreadAria: "การแจ้งเตือน ({{count}} ยังไม่ได้อ่าน)",
+      types: {
+        order_delayed: { title: "การออก eSIM ล่าช้า", body: "eSIM ของคุณใช้เวลานานขึ้นเล็กน้อย ระบบกำลังลองใหม่โดยอัตโนมัติ โดยปกติจะเสร็จภายใน 15 นาที" },
+        order_fulfilled: { title: "eSIM ของคุณพร้อมแล้ว", body: "ออก eSIM สำเร็จแล้ว ตรวจสอบได้ที่ My Page" },
+        order_failed: { title: "การออก eSIM ล้มเหลว", body: "ไม่สามารถออก eSIM ได้ โปรดติดต่อฝ่ายสนับสนุนหรือขอคืนเงิน" },
+      },
+    },
     title: "eSIM ของฉัน",
     noEsim: "ยังไม่มี eSIM",
     noEsimDesc: "ซื้อแพ็กเกจเพื่อรับ eSIM ญี่ปุ่นของคุณ",

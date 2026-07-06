@@ -139,7 +139,8 @@ export async function handleProvisioningFailure(
       userId: ctx.userId,
       title: "eSIMの発行に遅延が発生しています",
       body: "eSIMの発行に時間がかかっています。自動的に再試行中です。通常15分以内に完了します。",
-      type: "order_failed",
+      // フロントは type で多言語翻訳する。遅延は最終失敗(order_failed)と区別する。
+      type: "order_delayed",
       orderId: ctx.orderId,
     });
   } catch (notifyErr) {

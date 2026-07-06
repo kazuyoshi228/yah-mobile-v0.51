@@ -280,6 +280,16 @@ const zhCN = {
     refundConsentRequired: "请同意不可退款政策以继续支付。",
   },
   mypage: {
+    notifications: {
+      title: "通知",
+      empty: "暂无新通知",
+      unreadAria: "通知（{{count}} 条未读）",
+      types: {
+        order_delayed: { title: "eSIM 签发延迟", body: "您的 eSIM 签发时间较长，系统正在自动重试，通常 15 分钟内完成。" },
+        order_fulfilled: { title: "您的 eSIM 已就绪", body: "eSIM 已成功签发，请在“我的页面”查看。" },
+        order_failed: { title: "eSIM 签发失败", body: "无法签发您的 eSIM，请联系客服或申请退款。" },
+      },
+    },
     title: "我的eSIM",
     noEsim: "暂无eSIM。",
     noEsimDesc: "购买套餐以获取您的日本eSIM。",

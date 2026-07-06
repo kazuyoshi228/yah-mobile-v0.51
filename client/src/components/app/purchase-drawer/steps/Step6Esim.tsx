@@ -47,10 +47,6 @@ export function Step6Esim() {
               </a>
             )}
           </div>
-          <div className="border border-[#D7D7D7] p-4 mb-6">
-            <p className="text-label text-black/35 mb-1">{t("drawer.esimIccid")}</p>
-            <p className="font-mono text-black text-[0.8125rem] tracking-wider break-all">{esimLink.iccid}</p>
-          </div>
           <DrawerClose asChild>
             <button className="text-label px-6 py-3 border border-[#D7D7D7] text-black hover:border-black transition-colors w-full">{t("drawer.close")}</button>
           </DrawerClose>

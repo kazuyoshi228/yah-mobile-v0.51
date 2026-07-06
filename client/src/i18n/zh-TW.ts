@@ -123,6 +123,16 @@ const zhTW = {
     loginConsentSuffix: "。",
   },
   mypage: {
+    notifications: {
+      title: "通知",
+      empty: "沒有新通知",
+      unreadAria: "通知（{{count}} 則未讀）",
+      types: {
+        order_delayed: { title: "eSIM 發行延遲", body: "您的 eSIM 發行需要較長時間，系統正在自動重試，通常 15 分鐘內完成。" },
+        order_fulfilled: { title: "您的 eSIM 已就緒", body: "eSIM 已成功發行，請於「我的頁面」查看。" },
+        order_failed: { title: "eSIM 發行失敗", body: "無法發行您的 eSIM，請聯絡客服或申請退款。" },
+      },
+    },
     title: "我的eSIM",
     noEsim: "尚無eSIM。",
     noEsimDesc: "購買方案以取得您的日本eSIM。",
