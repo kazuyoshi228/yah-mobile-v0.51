@@ -1,8 +1,8 @@
 # yah.mobile v0.51 実装計画書
 
-作成: 2026-07-06 ／ 更新: 2026-07-06（v0.5本番リリース反映）／ 基準コミット: `008063e`（main=dev）／ ステータス: **提案（各実装フェーズは着手前に個別承認）**
-評価: 現行 v0.5 = **A−（89/100）**・招待制でソフトローンチ可
-リリース: **v0.5 を本番リリース済み**（`dev`→`main` FFマージ `008063e`、`firebase deploy --only hosting,firestore:rules` 完了）。functions は今セッションで本番反映済み。
+作成: 2026-07-06 ／ 更新: **2026-07-07（進捗棚卸し・CI/PWA/E2E/DB改善を反映）** ／ 基準コミット: `3420502`（dev=origin/v0.51）／ ステータス: **進行中（各実装フェーズは着手前に個別承認）**
+評価: 現行 = **A−（89/100）**・招待制でソフトローンチ可
+リリース: v0.5 本番リリース済み。以降の hardening（rules型安全化・DB改善・購入確認メール等）も**本番反映済み**。詳細は §1.5。
 
 > 🚨 本書は v0.51 全体の**計画レイヤ**。CLAUDE.md の実装フローに従い、`functions/`・`firestore.rules`・本番/hosting デプロイは**各フェーズ着手前にユーザー承認**を得る。本書は「何を・なぜ・どの順で」を確定するためのもの。
 
@@ -66,8 +66,22 @@
 - [esimaccess_parallel_introduction.md](./esimaccess_parallel_introduction.md)（並走設計）
 - [esimaccess_api_notes.md](./esimaccess_api_notes.md)（確定API仕様）
 - [design_manus_report_fixes.md](./design_manus_report_fixes.md)（v0.5対応）
-- [design_user_doc_consolidation.md](./design_user_doc_consolidation.md)
+- [design_user_doc_consolidation.md](./design_user_doc_consolidation.md)／[design_pwa_refresh_ux.md](./design_pwa_refresh_ux.md)
+- [design_db01_consent.md](./design_db01_consent.md)／[design_db04_expirydate.md](./design_db04_expirydate.md)
 - [api_functions.md](./api_functions.md) / [firestore_schema.md](./firestore_schema.md) / [screen_flow.md](./screen_flow.md)
+
+### 1.5 本セッションで完了（2026-07-07 時点・棚卸し）
+| 区分 | 内容 | 反映 |
+|---|---|---|
+| **S2 CIテストゲート** | GitHub Actions（tsc/lint/client/functions/rules を push・PR で自動実行、E2Eは任意ジョブ）。本番デプロイは含めない | ✅ dev（`.github/workflows/ci.yml`・v0.51で稼働） |
+| **S4 PWAキャッシュ** | `registerType: prompt` ＋ 更新バナー＋定期update()。手動キャッシュ削除不要に | ✅ **本番hosting** |
+| **① Refresh体感改善** | "Syncing…" をデータ反映まで継続＋「Last updated」表示 | ✅ **本番hosting** |
+| **S6 E2E拡充** | Playwright 非破壊スイート 34件（スモーク/i18n5言語/法務/主要セクション/プラン/操作系） | ✅ dev |
+| **DB改善** | incident_logs 管理読取ルール（実バグ修正）＋索引／型統一（DB-01同意・DB-02 SystemStats・DB-05 analytics）／DB-04 expiryDate epoch ms化＋移行完了 | ✅ **本番 rules/indexes/functions** |
+| **障害対応（Bappy認証失効）** | `OMAX_CLIENT_ID` 末尾改行→401 を復旧、esim_links 同期のレート制限ルールを型安全化 | ✅ **本番 functions/rules** |
+| SSH運用・v0.51主リポジトリ化 | push をトークン不要のSSHに、origin=yah-mobile-v0.51 | ✅ |
+
+> **残る本丸**：柱1（Webhook確認）／柱2（eSIMAccess並走）／S1（可観測性）／**S10（プロバイダ死活監視）**／S7（運用ランブック）。DB-03/09/10 は実コード検証の結果**非改善/無意味/読み手なし**で**非対応**と判断（[firestore_schema.md] 参照）。
 
 ---
 
@@ -200,18 +214,18 @@ plans/{id}: {
 
 ## 4. 支援ワークストリーム（GA前に並行対応）
 
-| # | 項目 | 内容 | 変更範囲 |
-|---|---|---|---|
-| S1 | 可観測性 | **Google Cloud Error Reporting の新規エラー通知をON**（Functionsは自動集約済）＋**フロントのブラウザ内エラー収集**（Sentry無料枠 or 自前でError Reporting送信・PIIスクラブ・CSP更新） | フロント＋設定 |
-| S2 | CI テストゲート | PR で `tsc --noEmit`＋vitest 必須・失敗でマージ不可。`.github/workflows` をリポジトリ管理下へ | CI |
-| S3 | アクセシビリティ | aria/キーボード点検（購入・問い合わせフォーム優先） | フロント |
-| S4 | PWA キャッシュ | デプロイ時の stale バンドル対策（バージョニング/更新導線） | フロント |
-| S5 | lastSignedIn | 毎ログインで更新する仕組み（現状ほぼ未更新） | functions or client |
-| **S7（solo）** | **運用ランブック** | 障害/返金/手動発行/デプロイ/復旧/バックアップ手順を **別doc `docs/runbook_solo_ops.md`** に整備（バス係数=1対策・恒久文書） | ドキュメント |
-| **S8（solo）** | **依存自動更新** | Dependabot/Renovate で npm/pnpm・Firebase SDK の更新PRを自動化（脆弱化・手作業を防止） | CI/設定 |
-| **S9（solo）** | **アラート最適化** | 「本当に対応が要る時だけ鳴る」よう Error Reporting/Slack 通知の閾値・粒度を調整（一人＝オンコール交代なしのため誤報を最小化） | 設定 |
-| **S10（最優先）** | **プロバイダ死活/認証監視** | Bappy(OMAX)/eSIMAccess の**認証を定期ping**（例: `onSchedule` 15分）し、**401/失敗を即オーナー通知**。発行/同期エラー率もしきい値監視。**「発行系が止まったら数分で気づく」を担保** | functions＋設定 |
-| S6（任意） | 型/テスト | 管理画面 `any` 削減・E2E（Playwright）拡充 | フロント |
+| # | 状態 | 項目 | 内容 | 変更範囲 |
+|---|---|---|---|---|
+| S1 | ⬜ 未 | 可観測性 | **Error Reporting の新規エラー通知ON**（Functionsは自動集約済）＋**フロントのブラウザ内エラー収集**（Sentry無料枠 or 自前送信・PIIスクラブ・CSP更新） | フロント＋設定 |
+| S2 | ✅ 完了 | CI テストゲート | GitHub Actions で push/PR に tsc/lint/client/functions/rules を自動実行。E2Eは任意ジョブ。デプロイは含めない | CI（`ci.yml`） |
+| S3 | ⬜ 未 | アクセシビリティ | aria/キーボード点検（購入・問い合わせフォーム優先） | フロント |
+| S4 | ✅ 完了 | PWA キャッシュ | `registerType: prompt`＋更新バナー＋定期update()。**本番反映済み** | フロント |
+| S5 | ⬜ 未 | lastSignedIn | 毎ログインで更新する仕組み（現状ほぼ未更新） | functions or client |
+| **S7（solo）** | ⬜ 未 | **運用ランブック** | 障害/返金/手動発行/デプロイ/復旧/バックアップ手順を **別doc `docs/runbook_solo_ops.md`** に整備（バス係数=1対策・恒久文書） | ドキュメント |
+| **S8（solo）** | ⬜ 未 | **依存自動更新** | Dependabot/Renovate で npm/pnpm・Firebase SDK の更新PRを自動化 | CI/設定 |
+| **S9（solo）** | ⬜ 未 | **アラート最適化** | 「本当に対応が要る時だけ鳴る」よう Error Reporting/Slack 通知の閾値・粒度を調整 | 設定 |
+| **S10（最優先）** | ⬜ 未 | **プロバイダ死活/認証監視** | Bappy(OMAX)/eSIMAccess の**認証を定期ping**（例: `onSchedule` 15分）し **401/失敗を即オーナー通知**。発行/同期エラー率もしきい値監視。**「発行系が止まったら数分で気づく」を担保** | functions＋設定 |
+| S6（任意） | 🟡 一部 | 型/テスト | E2E（Playwright 34件）は導入済み。管理画面 `any` 削減は残 | フロント |
 
 > **⚠️ 実インシデント（2026-07-06 検知）が S10 の必要性を実証**：`OMAX_CLIENT_ID` 末尾の改行混入（07-03の Secret Manager 移行時の貼り付け事故）で **Bappy認証が 401 になり、発行・トップアップ・同期が 07-02〜07-06 の約4日間ダウン**。しかも**気づいたのは顧客申告から**で、07-03 の発行失敗時の `notifyOwner` も**オーナーに届いていなかった**（＝アラート到達の穴）。→ **S10（認証死活ping）＋S9（アラート到達性）＋柱2（eSIMAccess並走でSPOF緩和）** を最優先で実装すべき、という具体的裏付け。詳細は運用ランブック（S7）にも「プロバイダ認証失効」の手順として記載する。
 
