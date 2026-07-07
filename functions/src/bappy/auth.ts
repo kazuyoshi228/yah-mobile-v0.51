@@ -28,7 +28,11 @@ export function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 
   return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
 }
 
-async function fetchNewToken(): Promise<string> {
+/**
+ * キャッシュを経由せず新規にトークンを取得する（失敗時は例外）。
+ * 死活監視（providerHealthCheck）が「いま認証できるか」をライブ検証するのに使う。
+ */
+export async function fetchNewToken(): Promise<string> {
   const clientId = omaxClientId.value();
   const clientSecret = omaxClientSecret.value();
 

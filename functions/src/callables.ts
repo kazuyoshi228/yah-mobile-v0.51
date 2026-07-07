@@ -27,6 +27,8 @@ const omaxClientSecret = defineSecret("OMAX_CLIENT_SECRET");
 // LLM / オーナー通知の鍵は Secret Manager 管理（process.env ではなく defineSecret）
 const forgeApiKey = defineSecret("BUILT_IN_FORGE_API_KEY");
 const slackWebhookUrl = defineSecret("SLACK_WEBHOOK_URL");
+// オーナー通知のメール到達フォールバック（S9）で使用
+const ownerEmail = defineSecret("OWNER_EMAIL");
 
 const REGION = "asia-northeast1";
 
@@ -174,7 +176,7 @@ yah.mobile Analytics Summary (${period}):
 
 // ─── Incident (Read APIs Removed: pure BaaS) ──────────────────────────────────
 
-export const incidentRunRetryNow = onCall({ region: REGION, enforceAppCheck: true, secrets: [gmailUser, gmailPass, forgeApiKey, slackWebhookUrl, stripeSecretKey] }, async (request) => {
+export const incidentRunRetryNow = onCall({ region: REGION, enforceAppCheck: true, secrets: [gmailUser, gmailPass, forgeApiKey, slackWebhookUrl, stripeSecretKey, ownerEmail] }, async (request) => {
   await requireAdmin(request);
   const result = await processPendingRetries();
   return { success: true, ...result };

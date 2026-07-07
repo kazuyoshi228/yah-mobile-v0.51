@@ -15,6 +15,8 @@ const gmailPass = defineSecret("GMAIL_PASS");
 // 発券失敗時のオーナー通知（Forge/Slack）で使用
 const forgeApiKey = defineSecret("BUILT_IN_FORGE_API_KEY");
 const slackWebhookUrl = defineSecret("SLACK_WEBHOOK_URL");
+// オーナー通知のメール到達フォールバック（S9）で使用
+const ownerEmail = defineSecret("OWNER_EMAIL");
 
 import {
   getOrderByStripeSessionId,
@@ -37,7 +39,7 @@ export const stripeWebhook = onRequest(
   {
     region: "asia-northeast1",
     timeoutSeconds: 120,
-    secrets: [stripeSecretKey, stripeWebhookSecret, omaxClientId, omaxClientSecret, gmailUser, gmailPass, forgeApiKey, slackWebhookUrl],
+    secrets: [stripeSecretKey, stripeWebhookSecret, omaxClientId, omaxClientSecret, gmailUser, gmailPass, forgeApiKey, slackWebhookUrl, ownerEmail],
   },
   async (req, res) => {
     if (req.method !== "POST") {
