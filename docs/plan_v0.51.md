@@ -1,6 +1,6 @@
 # yah.mobile v0.51 実装計画書
 
-作成: 2026-07-06 ／ 更新: **2026-07-07（返金機能を本番リリース・進捗棚卸し）** ／ 基準コミット: `974378e`（dev=main=origin/v0.51）／ ステータス: **進行中（各実装フェーズは着手前に個別承認）**
+作成: 2026-07-06 ／ 更新: **2026-07-07（返金機能＋`/contact`ページを本番リリース・進捗棚卸し・出典ラベル中立化）** ／ 基準コミット: `f02ccb3`（dev=main=origin/v0.51）／ ステータス: **進行中（各実装フェーズは着手前に個別承認）**
 評価: 現行 = **A（約91/100）**・招待制でソフトローンチ可（**返金Must-fix解消で加点**。GA残は柱1/柱2/可観測性）
 リリース: v0.5 本番リリース済み。以降の hardening（rules型安全化・DB改善・購入確認メール等）も**本番反映済み**。詳細は §1.5。
 
@@ -30,13 +30,15 @@
 ## 1. 現状サマリ（このセッションの全レポート集約）
 
 ### 1.1 v0.5 で完了済み（**本番リリース済み `008063e`**）
+> ①〜⑤は **2026-07-06 の総合評価レポート**（→ [design_manus_report_fixes.md](./design_manus_report_fixes.md)）由来の指摘。実コードで検証のうえ対応済み。
+
 | 区分 | 内容 | 反映 |
 |---|---|---|
-| Manus①ファネル3イベント | plan_tab_click/checkout_start/order_complete 発火 | **本番hosting ✅** |
-| Manus③ zh-TW | 繁体字 167キー補完（100%） | **本番hosting ✅** |
-| Manus④ セキュリティヘッダ | HSTS/nosniff/X-Frame-Options | **本番hosting ✅**（yah.mobi で検証済） |
-| Manus⑤ 購入確認メール | checkout.session.completed で受付メール | **本番functions ✅** |
-| Manus② テスト補強 | retry escalation/recovery・bappy notify・orders IDOR | dev ✅（テストのみ・デプロイ対象外） |
+| 評価① ファネル3イベント | plan_tab_click/checkout_start/order_complete 発火 | **本番hosting ✅** |
+| 評価③ zh-TW | 繁体字 167キー補完（100%） | **本番hosting ✅** |
+| 評価④ セキュリティヘッダ | HSTS/nosniff/X-Frame-Options | **本番hosting ✅**（yah.mobi で検証済） |
+| 評価⑤ 購入確認メール | checkout.session.completed で受付メール | **本番functions ✅** |
+| 評価② テスト補強 | retry escalation/recovery・bappy notify・orders IDOR | dev ✅（テストのみ・デプロイ対象外） |
 | ⑦ useAuthユーザーdoc一本化 | onUserCreated に集約 | **本番hosting ✅** |
 | サポート文言 A/B | 人的チーム含意の除去・応答SLA実値化（5言語） | **本番hosting ✅**（→ [design_support_ai_chat_copy.md](./design_support_ai_chat_copy.md)） |
 | plans Rules検証 | 型・範囲・IDORバリデーション | **本番firestore:rules ✅** |
@@ -75,6 +77,7 @@
 | 区分 | 内容 | 反映 |
 |---|---|---|
 | **🎯 返金機能（Must-fix①）** | **Lane A**：当社側エラー（発行/topup最終失敗）を自動全額返金。**Lane B**：`/admin` 返金タブ（返金ボタン＋自動返金ON/OFFキルスイッチ）。**Stripe `charge.refunded` webhook を真実源**に3経路を一元化。購入時ページ言語を注文保存し**5言語返金メール**。Terms/llms.txt に**例外条項**。設計→[spec_refund.md](./spec_refund.md) | ✅ **本番 functions/rules/hosting**＋Stripe設定（charge.refunded購読・返金メールOFF） |
+| **問い合わせ専用ページ `/contact`** | AIチャット直リンク用の軽量ページ（`Nav`＋`ContactSection`再利用＋`Footer`）。Nav/Footerの「Contact」は `/app#contact` のまま据え置き。設計→[design_contact_page.md](./design_contact_page.md) | ✅ **本番hosting**（`yah.mobi/contact`） |
 | **S2 CIテストゲート** | GitHub Actions（tsc/lint/client/functions/rules を push・PR で自動実行、E2Eは任意ジョブ）。本番デプロイは含めない | ✅ dev（`.github/workflows/ci.yml`・v0.51で稼働） |
 | **S4 PWAキャッシュ** | `registerType: prompt` ＋ 更新バナー＋定期update()。手動キャッシュ削除不要に | ✅ **本番hosting** |
 | **① Refresh体感改善** | "Syncing…" をデータ反映まで継続＋「Last updated」表示 | ✅ **本番hosting** |
