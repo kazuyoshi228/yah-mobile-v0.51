@@ -32,7 +32,7 @@ import {
   FsUser,
   incrementSystemStats,
 } from "./db";
-import { createLink, addTopupPlan } from "./bappy";
+import { getProvider } from "./providers/types";
 import { sendEmail, buildEsimReadyEmail, buildPurchaseReceivedEmail, buildRefundCompletedEmail } from "./mailer";
 import { handleProvisioningFailure } from "./esimRetryService";
 export const stripeWebhook = onRequest(
@@ -272,35 +272,38 @@ async function fulfillEsim(orderData: FsOrder) {
   }
 
   try {
+    const provider = orderData.provider;
     let linkUuid = "";
     if (isTopup) {
       const parentLinkUuid = orderData.esimLinkUuid;
       if (!parentLinkUuid) throw new Error("Topup order missing esimLinkUuid");
-      await addTopupPlan({ identifier: parentLinkUuid, planId: bappyPlanId });
+      await getProvider(provider).topup({ providerRef: parentLinkUuid, providerPlanId: bappyPlanId, transactionId: orderId });
       linkUuid = parentLinkUuid;
       logger.info(`[fulfillEsim] Topup successful for link: ${linkUuid}`);
     } else {
-      const link = await createLink({ bappyPlanId, orderId });
-      linkUuid = link.uuid;
-      
+      const detail = await getProvider(provider).createEsim({ providerPlanId: bappyPlanId, orderId, transactionId: orderId });
+      linkUuid = detail.providerRef;
+
       // プランは管理画面から自動IDで作成されるため、ドキュメントIDではなく
       // bappyPlanId フィールドで検索する（ID規約の二重化に依存しない）。
       const planQuery = await collections.plans.where("bappyPlanId", "==", bappyPlanId).limit(1).get();
       const planDoc = planQuery.empty ? null : planQuery.docs[0];
       const planData = planDoc?.data() ?? {};
 
-      await collections.esimLinks.doc(link.uuid).set({
+      await collections.esimLinks.doc(detail.providerRef).set({
         orderId,
         userId,
-        bappyLinkUuid: link.uuid,
-        iccid: link.iccid,
-        lpaProfile: link.lpaProfile,
-        appleActivationUrl: link.appleActivationUrl ?? null,
-        androidActivationUrl: link.androidActivationUrl ?? null,
-        dataRemainingMb: link.dataRemainingMb ?? null,
-        dataTotalMb: link.dataTotalMb ?? null,
-        // DB-04: Bappy の ISO 文字列を epoch ms に変換して保存（NaN は null）
-        expiryDate: link.expiryDate && !Number.isNaN(Date.parse(link.expiryDate)) ? Date.parse(link.expiryDate) : null,
+        provider: provider ?? "bappy",
+        providerRef: detail.providerRef,
+        bappyLinkUuid: detail.providerRef, // 後方互換（既存の同期/参照が bappyLinkUuid を使う）
+        iccid: detail.iccid,
+        lpaProfile: detail.lpaProfile,
+        appleActivationUrl: detail.appleActivationUrl ?? null,
+        androidActivationUrl: detail.androidActivationUrl ?? null,
+        qrCodeUrl: detail.qrCodeUrl ?? null,
+        dataRemainingMb: detail.dataRemainingMb ?? null,
+        dataTotalMb: detail.dataTotalMb ?? null,
+        expiryDate: detail.expiryDate, // provider が epoch ms に正規化済み
         status: "active",
         planId: planDoc?.id ?? null,
         planName: planData?.name ?? null,

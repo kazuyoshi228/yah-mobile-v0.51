@@ -7,9 +7,9 @@ import { onDocumentCreated, onDocumentUpdated, onDocumentWritten } from "firebas
 import { defineSecret } from "firebase-functions/params";
 import { getFirebaseDb, getFirebaseAuth } from "./firebase";
 import { ENV } from "./env";
-import { updateEsimLink } from "./db";
+import { updateEsimLink, FsEsimLink } from "./db";
 
-import { getLinkDetail } from "./bappy";
+import { getProvider } from "./providers/types";
 import { notifyOwner } from "./adapters/notify";
 import { sendEmail } from "./mailer";
 
@@ -95,13 +95,14 @@ export const onEsimSyncRequested = onDocumentUpdated(
     logger.info(`[onEsimSyncRequested] Syncing eSIM data for linkId: ${linkId}, uuid: ${bappyLinkUuid}`);
 
     try {
-      const detail = await getLinkDetail(bappyLinkUuid);
+      const provider = after.provider as string | undefined;
+      const providerRef = (after.providerRef as string | undefined) ?? bappyLinkUuid;
+      const detail = await getProvider(provider).getEsimDetail(providerRef);
       await updateEsimLink(bappyLinkUuid, {
-        status: detail.status,
+        status: detail.status as FsEsimLink["status"],
         dataRemainingMb: detail.dataRemainingMb ?? null,
         dataTotalMb: detail.dataTotalMb ?? null,
-        // DB-04: Bappy の ISO 文字列を epoch ms に変換して保存（NaN は null）
-        expiryDate: detail.expiryDate && !Number.isNaN(Date.parse(detail.expiryDate)) ? Date.parse(detail.expiryDate) : null,
+        expiryDate: detail.expiryDate, // provider が epoch ms に正規化済み
       });
       logger.info(`[onEsimSyncRequested] Sync complete for linkId: ${linkId}`);
     } catch (err) {

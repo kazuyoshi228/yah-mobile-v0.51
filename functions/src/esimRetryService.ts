@@ -10,7 +10,7 @@ import * as logger from "firebase-functions/logger";
  * 5. On final failure, sends escalation notification
  */
 
-import { createLink, addTopupPlan } from "./bappy";
+import { getProvider } from "./providers/types";
 import { notifyOwner } from "./adapters/notify";
 import {
   sendEmail,
@@ -184,34 +184,36 @@ export async function processPendingRetries(): Promise<{ processed: number; succ
         if (!job.parentOrderId || !job.esimLinkUuid) {
           throw new Error("Missing parentOrderId or esimLinkUuid for topup retry");
         }
-        const activation = await addTopupPlan({ identifier: job.esimLinkUuid, planId: job.bappyPlanId });
+        const activation = await getProvider().topup({ providerRef: job.esimLinkUuid, providerPlanId: job.bappyPlanId, transactionId: job.orderId });
         const esimLink = await getEsimLinkByOrderId(job.parentOrderId);
         if (!esimLink) throw new Error("Parent eSIM link not found");
         // bappyPlanId はドキュメントIDではなくフィールドで検索（ID規約の二重化に依存しない）
         const planQuery = await collections.plans.where("bappyPlanId", "==", job.bappyPlanId).limit(1).get();
         const planData = planQuery.empty ? {} : planQuery.docs[0].data();
-        
+
         await createEsimActivation({
           esimLinkId: esimLink.id,
-          bappyActivationUuid: activation.uuid,
+          bappyActivationUuid: activation.providerRef,
           bappyPlanId: job.bappyPlanId,
           activationType: "topup",
-          expiryDate: activation.expiryDate ? new Date(activation.expiryDate).getTime() : null,
+          expiryDate: activation.expiryDate, // provider が epoch ms に正規化済み
           dataRemainingMb: activation.dataRemainingMb,
           planName: planData?.name ?? null,
           totalDataGb: planData?.dataGb ?? null,
         });
       } else {
         // New eSIM retry
-        const link = await createLink({ bappyPlanId: job.bappyPlanId, orderId: job.orderId });
+        const detail = await getProvider().createEsim({ providerPlanId: job.bappyPlanId, orderId: job.orderId, transactionId: job.orderId });
         await createEsimLink({
           orderId: job.orderId,
           userId: job.userId,
-          bappyLinkUuid: link.uuid,
-          iccid: link.iccid,
-          lpaProfile: link.lpaProfile,
-          appleActivationUrl: link.appleActivationUrl,
-          androidActivationUrl: link.androidActivationUrl,
+          provider: "bappy",
+          providerRef: detail.providerRef,
+          bappyLinkUuid: detail.providerRef,
+          iccid: detail.iccid ?? "",
+          lpaProfile: detail.lpaProfile ?? "",
+          appleActivationUrl: detail.appleActivationUrl,
+          androidActivationUrl: detail.androidActivationUrl,
         });
       }
 
