@@ -12,6 +12,7 @@ export * from "./webhooks";
 export * from "./webhooks_bappy";
 export * from "./scheduled";
 export * from "./analytics";
+export * from "./clientErrors";
 export * from "./llmsTxt";
 export * from "./currencyRates";
 export * from "./callables";

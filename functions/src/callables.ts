@@ -327,7 +327,8 @@ export const submitContactInquiry = onCall({ region: REGION, enforceAppCheck: tr
   logger.info("[Contact] Start parsing input");
   const parsed = SubmitContactInquiryInput.safeParse(request.data ?? {});
   if (!parsed.success) {
-    logger.error("[Contact] Zod parse failed:", parsed.error);
+    // 不正/ボットのペイロード拒否は正常動作。Error Reporting のノイズを避けるため warn に留める。
+    logger.warn("[Contact] Zod parse failed (rejected malformed input):", parsed.error.message);
     throw zodError(parsed.error.message);
   }
   

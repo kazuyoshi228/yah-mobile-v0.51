@@ -16,6 +16,10 @@
         "function": "analyticsEvents"
       },
       {
+        "source": "/api/client-errors",
+        "function": "clientErrorLog"
+      },
+      {
         "source": "/llms.txt",
         "function": "llmsTxt"
       },
