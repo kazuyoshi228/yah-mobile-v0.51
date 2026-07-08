@@ -37,8 +37,12 @@ export const bappyWebhook = onRequest(
       return;
     }
 
-    // TODO: Verify Bappy signature here if/when provided
-    // const sig = req.headers["x-bappy-signature"]; 
+    // 【認証: 意図的に未実装（休眠受容）】決定 2026-07-08 / docs/design_bappy_webhook_dormant.md
+    //   Bappy は旧プロバイダで、新規販売は全て eSIMAccess（本Webhookは休眠）。
+    //   本エンドポイントは esim_links の表示状態（残量/status/lastActiveAt）を update するのみで
+    //   財務・不可逆操作を持たない。有効な bappyLinkUuid（ランダムUUID）を知る必要があり列挙も不可。
+    //   認証の責務は OMAX 側（CLAUDE.md）。再稼働時は esimaccessWebhook と同じ
+    //   トークンURL＋IP許可＋裏取りを導入する（設計は同関数が雛形）。
 
     const body = req.body as {
       eventType?: string;
