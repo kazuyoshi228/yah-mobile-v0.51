@@ -47,6 +47,7 @@ export type PlanFormData = {
   dataGb: string;
   validityDays: string;
   priceJpy: string;
+  wholesalePriceUsd: string;
   regions: string;
   sponsorProfile: string;
   planType: "initial" | "topup" | "";
@@ -59,6 +60,7 @@ export const EMPTY_PLAN_FORM: PlanFormData = {
   dataGb: "",
   validityDays: "",
   priceJpy: "",
+  wholesalePriceUsd: "",
   regions: "",
   sponsorProfile: "",
   planType: "",
@@ -79,9 +81,15 @@ export type PlanRow = {
   sortOrder?: number;
   createdAt: number;
   updatedAt: number;
+  // 柱2: プロバイダ/卸情報（eSIMAccess取り込みで自動付与。既存Bappyプランは未設定）
+  provider?: "esimaccess" | "bappy" | null;
+  providerPlanId?: string | null;
+  wholesalePriceUsd?: number | null;
+  network?: string | null;
+  ipExport?: string | null;
 };
 
-export type EditingCell = { planId: string; field: "name" | "dataGb" | "validityDays" | "priceJpy" };
+export type EditingCell = { planId: string; field: "name" | "dataGb" | "validityDays" | "priceJpy" | "wholesalePriceUsd" };
 
 // ─────────────────────────────────────────────
 // Comparison（「How we compare.」比較テーブル）

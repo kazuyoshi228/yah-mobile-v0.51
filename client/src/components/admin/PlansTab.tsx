@@ -11,6 +11,7 @@ import {
   updateDoc,
   deleteDoc,
   orderBy,
+  limit,
   writeBatch,
 } from "firebase/firestore";
 import { useMemo, useRef, useState } from "react";
@@ -44,6 +45,7 @@ function PlanFormModal({
           dataGb: plan.dataGb,
           validityDays: String(plan.validityDays),
           priceJpy: String(plan.priceJpy),
+          wholesalePriceUsd: plan.wholesalePriceUsd != null ? String(plan.wholesalePriceUsd) : "",
           regions: plan.regions ?? "",
           sponsorProfile: plan.sponsorProfile ?? "",
           planType: plan.planType ?? "",
@@ -67,12 +69,20 @@ function PlanFormModal({
       setError("価格は正の整数を入力してください");
       return;
     }
+    // 卸USD（任意）：空なら既存値を触らない。数値なら反映。
+    const wholesaleRaw = form.wholesalePriceUsd.trim();
+    const wholesalePriceUsd = wholesaleRaw === "" ? undefined : Number(wholesaleRaw);
+    if (wholesalePriceUsd !== undefined && (!Number.isFinite(wholesalePriceUsd) || wholesalePriceUsd < 0)) {
+      setError("卸(USD)は0以上の数値で入力してください");
+      return;
+    }
     const payload = {
       bappyPlanId: form.bappyPlanId.trim(),
       name: form.name.trim(),
       dataGb: form.dataGb.trim(),
       validityDays,
       priceJpy,
+      ...(wholesalePriceUsd !== undefined ? { wholesalePriceUsd } : {}),
       regions: form.regions.trim() || null,
       sponsorProfile: form.sponsorProfile.trim() || null,
       planType: form.planType || null,
@@ -161,7 +171,7 @@ function PlanFormModal({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             <div>
               <label className="block mb-1" style={{ color: "rgba(0,0,0,0.5)", fontSize: "0.6rem" }}>
                 Data (GB) *
@@ -200,6 +210,20 @@ function PlanFormModal({
                 onChange={(e) => setForm((f) => ({ ...f, priceJpy: e.target.value }))}
                 placeholder="e.g. 990"
                 required
+              />
+            </div>
+            <div>
+              <label className="block mb-1" style={{ color: "rgba(0,0,0,0.5)", fontSize: "0.6rem" }}>
+                Wholesale ($) 卸
+              </label>
+              <input
+                className={inputClass}
+                type="number"
+                min={0}
+                step="0.01"
+                value={form.wholesalePriceUsd}
+                onChange={(e) => setForm((f) => ({ ...f, wholesalePriceUsd: e.target.value }))}
+                placeholder="e.g. 2.70"
               />
             </div>
           </div>
@@ -439,6 +463,26 @@ export function PlansTab() {
   const plansQuery = useMemo(() => query(collection(getFirebaseDb(), "plans")), []);
   const { data: plans = [], isLoading, error: listError } = useFirestoreCollection<any>(() => plansQuery, [plansQuery]);
 
+  // マージン算出用の USD レート（currency_rates: JPY→通貨の乗数）。USD→JPY = usd / rates.USD。
+  const ratesQuery = useMemo(
+    () => query(collection(getFirebaseDb(), "currency_rates"), orderBy("updatedAt", "desc"), limit(1)),
+    [],
+  );
+  const { data: ratesData = [] } = useFirestoreCollection<{ id: string; rates: Record<string, number> }>(
+    () => ratesQuery,
+    [ratesQuery],
+    { realtime: false },
+  );
+  const usdPerJpy = ratesData[0]?.rates?.USD ?? null; // 1 JPY = usdPerJpy USD
+  const marginInfo = (plan: any): { jpyCost: number; margin: number; pct: number } | null => {
+    const usd = plan.wholesalePriceUsd;
+    if (usd == null || !usdPerJpy || !plan.priceJpy) return null;
+    const jpyCost = usd / usdPerJpy; // 卸USD → JPY
+    const margin = plan.priceJpy - jpyCost;
+    const pct = plan.priceJpy > 0 ? (margin / plan.priceJpy) * 100 : 0;
+    return { jpyCost, margin, pct };
+  };
+
   const [modalPlan, setModalPlan] = useState<PlanRow | null | "new">(
     undefined as unknown as PlanRow | null | "new",
   );
@@ -496,6 +540,14 @@ export function PlansTab() {
         return;
       }
       patch.priceJpy = v;
+    }
+    if (field === "wholesalePriceUsd") {
+      const v = Number(rawValue);
+      if (!Number.isFinite(v) || v < 0) {
+        toast.error("Invalid wholesale value");
+        return;
+      }
+      patch.wholesalePriceUsd = v;
     }
     try {
       await updateDoc(doc(getFirebaseDb(), "plans", planId), patch);
@@ -612,7 +664,7 @@ export function PlansTab() {
           <table className="w-full border-collapse">
             <thead>
               <tr className="border-b border-[#E0E0E0]">
-                {["ID", "Bappy Plan ID", "Type", "Name", "Data", "Days", "Price (¥)", "Status", "Actions"].map((h) => (
+                {["ID", "Provider", "Type", "Name", "Data", "Days", "Price (¥)", "Wholesale ($)", "Margin", "Status", "Actions"].map((h) => (
                   <th
                     key={h}
                     className="text-left pb-3 pr-4"
@@ -629,8 +681,19 @@ export function PlansTab() {
                   <td className="py-3 pr-4 text-black/40" style={{ fontSize: "0.8125rem" }}>
                     {plan.id}
                   </td>
-                  <td className="py-3 pr-4 text-black/60 font-mono" style={{ fontSize: "0.75rem" }}>
-                    {plan.bappyPlanId}
+                  <td className="py-3 pr-4" style={{ minWidth: "110px" }}>
+                    <span
+                      className={`inline-block px-1.5 py-0.5 border text-[0.55rem] font-medium tracking-wider uppercase ${
+                        (plan.provider ?? "bappy") === "esimaccess"
+                          ? "bg-blue-50 text-blue-700 border-blue-200"
+                          : "bg-gray-100 text-gray-500 border-gray-200"
+                      }`}
+                    >
+                      {plan.provider ?? "bappy"}
+                    </span>
+                    <div className="text-black/40 font-mono mt-0.5" style={{ fontSize: "0.65rem" }}>
+                      {plan.providerPlanId ?? plan.bappyPlanId}
+                    </div>
                   </td>
                   <td className="py-3 pr-4 text-black/60" style={{ fontSize: "0.75rem" }}>
                     {plan.planType || "-"}
@@ -644,6 +707,13 @@ export function PlansTab() {
                       setEditingCell={setEditingCell}
                       onSave={handleInlineSave}
                     />
+                    {(plan.network || plan.ipExport) && (
+                      <div className="text-black/35 mt-0.5" style={{ fontSize: "0.65rem" }}>
+                        {plan.network}
+                        {plan.network && plan.ipExport ? " · " : ""}
+                        {plan.ipExport ? `IP:${plan.ipExport}` : ""}
+                      </div>
+                    )}
                   </td>
                   <td className="py-3 pr-4" style={{ minWidth: "70px" }}>
                     <InlineCell
@@ -679,6 +749,38 @@ export function PlansTab() {
                       setEditingCell={setEditingCell}
                       onSave={handleInlineSave}
                     />
+                  </td>
+                  <td className="py-3 pr-4 text-black/60" style={{ minWidth: "80px" }}>
+                    {plan.wholesalePriceUsd != null ? (
+                      <InlineCell
+                        value={plan.wholesalePriceUsd}
+                        planId={plan.id}
+                        field="wholesalePriceUsd"
+                        type="number"
+                        prefix="$"
+                        editingCell={editingCell}
+                        setEditingCell={setEditingCell}
+                        onSave={handleInlineSave}
+                      />
+                    ) : (
+                      <span className="text-black/25" style={{ fontSize: "0.8125rem" }}>—</span>
+                    )}
+                  </td>
+                  <td className="py-3 pr-4" style={{ minWidth: "90px" }}>
+                    {(() => {
+                      const m = marginInfo(plan);
+                      if (!m) return <span className="text-black/25" style={{ fontSize: "0.8125rem" }}>—</span>;
+                      const positive = m.margin >= 0;
+                      return (
+                        <span
+                          title={`卸 ≈ ¥${Math.round(m.jpyCost).toLocaleString()}（レート換算）`}
+                          style={{ fontSize: "0.8125rem", color: positive ? "#15803d" : "#dc2626", fontWeight: 500 }}
+                        >
+                          ¥{Math.round(m.margin).toLocaleString()}
+                          <span style={{ fontSize: "0.65rem", opacity: 0.7 }}> ({m.pct.toFixed(0)}%)</span>
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="py-3 pr-4">
                     <button
