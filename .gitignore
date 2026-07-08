@@ -140,3 +140,6 @@ functions/lib/
 /test-results/
 /playwright-report/
 /playwright/.cache/
+
+# Playwright MCP artifacts
+.playwright-mcp/
