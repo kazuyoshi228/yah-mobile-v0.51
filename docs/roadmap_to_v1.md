@@ -32,7 +32,7 @@ Tier1＋プリレンダリングは本番反映済み。残りは以下。
 | 0.9-2 | **firestore.rules: plans新フィールド検証** | provider/providerPlanId/wholesalePriceUsd 等の最小バリデーション（要承認・rules変更） | あなた承認/私実装 | 小 |
 | ~~0.9-3~~ | ~~柱1 bappyWebhook 認証の結論~~ | ✅ **(B)休眠受容で決定**（[design_bappy_webhook_dormant.md](./design_bappy_webhook_dormant.md)）。非財務・有効UUID知得が前提・認証責務はOMAX側。TODOを決定注記に置換（挙動不変・再デプロイ不要） | 私 | ✅ 完了 |
 | 0.9-4 | **ドキュメント最新化** | `api_functions.md`/`firestore_schema.md` を柱2後の実装に整合（provider系フィールド反映） | 私 | 小 |
-| 0.9-5 | **G: eSIMAccess 再インストール仕様の確認** | 同一QRの再DL可否・回数上限・削除後の復元手順を eSIMAccess に確認 → FAQ/発行メール文言を事実ベースに更新（現状は安全側で「削除しないで」記載済） | あなた確認/私反映 | 小 |
+| ~~0.9-5~~ | ~~G: eSIMAccess 再インストール仕様の確認~~ | ✅ **確認済（2026-07-09）**：同一QR再DL可（有効化後は復元困難）・デバイス移行不可・実質1デバイス。FAQ(5言語)を事実ベースに更新済。詳細 [[esimaccess-reinstall-rules]] | あなた確認/私反映 | ✅ 完了 |
 
 ---
 
