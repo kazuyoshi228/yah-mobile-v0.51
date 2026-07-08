@@ -143,7 +143,9 @@ export default function CookiePolicy() {
             <h2 className="font-sans font-medium text-black text-[1rem] tracking-[0.04em] uppercase mb-6">Contact</h2>
             <p className="font-sans text-black/70 text-[0.875rem] leading-[1.75]">
               For questions about our use of cookies, please contact us via{" "}
-              <a href="https://chat.yah.mobi" target="_blank" rel="noopener noreferrer" className="underline hover:text-black transition-colors">chat.yah.mobi</a>.
+              <a href="https://chat.yah.mobi" target="_blank" rel="noopener noreferrer" className="underline hover:text-black transition-colors">chat.yah.mobi</a>{" "}
+              or by email at{" "}
+              <a href="mailto:contact@mail.yah.mobi" className="underline hover:text-black transition-colors">contact@mail.yah.mobi</a>.
             </p>
           </section>
 

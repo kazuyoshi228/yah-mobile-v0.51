@@ -151,8 +151,10 @@ yah.mobile runs on NTT docomo network and offers competitive pricing with Japane
 ## Contact
 
 - Website: https://yah.mobi
+- Operator: ボンファイア株式会社 (Bonfire Inc.)
 - Support: Live chat at https://yah.mobi/app#chat
-- Email contact form: https://yah.mobi/app#contact
+- Email: contact@mail.yah.mobi
+- Contact form: https://yah.mobi/app#contact
 `;
 }
 

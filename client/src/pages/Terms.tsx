@@ -45,7 +45,7 @@ export default function Terms() {
     },
     {
       title: "10. Specified Commercial Transactions Act (特定商取引法)",
-      body: "Seller: yah.mobile | Contact: Available via chat.yah.mobi | Phone: Disclosed without delay upon request | Price: As displayed at time of purchase (JPY, tax included) | Additional fees: None | Payment: Credit/debit card via Stripe | Delivery: Immediate upon payment (QR code delivered to registered email) | Returns/Cancellations: Not accepted after QR code issuance (digital product). Exception: if we cannot deliver the eSIM or top-up due to a technical issue on our side (a system error or an upstream provider failure), the payment is refunded in full — issued automatically to the original payment method once the failure is confirmed. For activation issues after delivery, contact support within 24 hours of purchase.",
+      body: "Seller (販売業者): ボンファイア株式会社 (Bonfire Inc.) | Operations Manager (運営統括責任者): 山田一慶和義 | Address (所在地): Disclosed without delay upon request / 請求により遅滞なく開示します | Phone (電話番号): Disclosed without delay upon request / 請求により遅滞なく開示します | Contact (連絡先): chat.yah.mobi or contact@mail.yah.mobi | Price (販売価格): As displayed at time of purchase (JPY, tax included) | Additional fees (追加手数料): None | Payment (支払方法): Credit/debit card via Stripe | Delivery (引渡時期): Immediate upon payment (QR code delivered to registered email) | Returns/Cancellations (返品・キャンセル): Not accepted after QR code issuance (digital product). Exception: if we cannot deliver the eSIM or top-up due to a technical issue on our side (a system error or an upstream provider failure), the payment is refunded in full — issued automatically to the original payment method once the failure is confirmed. For activation issues after delivery, contact support within 24 hours of purchase.",
     },
   ];
 
@@ -81,7 +81,9 @@ export default function Terms() {
           <div className="mt-12 mb-12">
             <p className="font-sans text-black/50 text-[0.875rem] leading-[1.75]">
               For questions about these Terms, please contact us via{" "}
-              <a href="https://chat.yah.mobi" target="_blank" rel="noopener noreferrer" className="underline hover:text-black transition-colors">chat.yah.mobi</a>.
+              <a href="https://chat.yah.mobi" target="_blank" rel="noopener noreferrer" className="underline hover:text-black transition-colors">chat.yah.mobi</a>{" "}
+              or by email at{" "}
+              <a href="mailto:contact@mail.yah.mobi" className="underline hover:text-black transition-colors">contact@mail.yah.mobi</a>.
             </p>
           </div>
 
