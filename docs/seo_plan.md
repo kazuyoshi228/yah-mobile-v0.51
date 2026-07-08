@@ -110,7 +110,7 @@ Tier2以降（動的head/プリレンダリング/コンテンツ）は工数が
 
 | ティア | 項目 | 内容 |
 |---|---|---|
-| **即時🔴** | **G-1 事実整合（KDDI→NTT docomo）** | サイトコピー(5言語)・`llmsTxt.ts`・`index.html` meta/schema・比較表の "KDDI/au" を **"NTT docomo"** に統一（docomo=日本最大網として訴求）。**法務(v0.8-2)と同時対応。要承認（functions=llmsTxt含む）** |
+| ~~即時🔴~~ ✅ | **G-1 事実整合（KDDI→NTT docomo）＝完了・本番反映(2026-07-08)** | サイトコピー(5言語)・`llmsTxt.ts`・`index.html` meta/schema・比較表(Firestore)・比較フォールバックの "KDDI/au" を **"NTT docomo"** に統一（日本最大網として訴求／'second-largest'→'largest'）。本番HTML+llms.txt の KDDI=0件を確認 |
 | **Tier1** | G-2 AIクローラ明示許可 | `robots.txt` に OAI-SearchBot / ChatGPT-User / Google-Extended / Applebot-Extended / CCBot / PerplexityBot(既) を Allow で明示 |
 | **Tier1** | G-4 llms-full.txt | 既存 `llmsTxt.ts` を拡張し全文版を配信（任意・低工数） |
 | **Tier1** | G-3 HowTo schema | eSIM設定4ステップを HowTo 構造化データ化（AppPage/index.html） |
