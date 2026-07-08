@@ -96,6 +96,11 @@
       }
     ]
     </script>
+
+    <!-- Support chat widget (yah-chat / 別プロジェクト chat.yah.mobi)。#yah-chat-btn を注入し、
+         各所の「Start a chat」ボタン(document.getElementById("yah-chat-btn").click())を有効化する。
+         ※CSP(firebase.json) の script/connect/frame/img に chat.yah.mobi を許可済み。 -->
+    <script src="https://chat.yah.mobi/widget.js" data-lang="en" defer></script>
   </head>
   <body>
     <div id="root">
