@@ -151,7 +151,7 @@ const zhTW = {
       },
       {
         "q": "可以退款嗎？",
-        "a": "eSIM為數位商品。付款完成後無法取消或退款。購買完成前需透過勾選框確認此政策。如有任何疑問，請在購買前透過聊天聯絡我們。"
+        "a": "eSIM為數位商品。付款完成後無法取消或退款。例外情況：若因我方技術問題無法交付eSIM或加值，我們將自動全額退款至您原付款方式。購買完成前需透過勾選框確認此政策。如有任何疑問，請在購買前透過聊天聯絡我們。"
       },
       {
         "q": "可以在多台裝置上使用嗎？",
@@ -358,7 +358,7 @@ const zhTW = {
     "esimActivateIos": "在iPhone上啟用",
     "esimActivateAndroid": "在Android上啟用",
     "esimDone": "完成",
-    "refundConsentLabel": "eSIM為數位商品。付款完成後無法取消或退款。如有任何疑問，請在購買前透過聊天聯絡我們。",
+    "refundConsentLabel": "eSIM為數位商品。付款完成後無法取消或退款。例外情況：若因我方技術問題無法交付eSIM或加值，我們將自動全額退款至您原付款方式。如有任何疑問，請在購買前透過聊天聯絡我們。",
     "refundConsentRequired": "請同意不可退款政策以繼續付款。",
     "termsConsentLabel": "我同意",
     "termsConsentRequired": "請同意使用條款以繼續。",
