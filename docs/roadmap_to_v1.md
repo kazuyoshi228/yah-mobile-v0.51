@@ -16,7 +16,7 @@
 
 | # | 項目 | 内容・指示 | 担当 | 規模 |
 |---|---|---|---|---|
-| 0.7-1 | **実発注 E2E 検証** | 招待済み自アカウントで **1GB/¥980 を実購入** → 数十秒で発行・QR/インストール表示・期限を確認 → `esim_links` に `provider:"esimaccess"`/`iccid`/`lpaProfile` を確認 → **/admin 返金**でcancel(残高返金)→Stripe返金→返金メールまで確認 | **あなた購入**／私がデータ検証 | 小 |
+| 0.7-1 | **実発注 E2E 検証**（plan_v0.51_v2 §3 受け入れ基準のフル範囲） | 招待済み自アカウントで **1GB/¥980 を実購入**し、以下を通す：①**発行**（数十秒でesim発行）②**QR/インストール**表示・期限 ③`esim_links` に `provider:"esimaccess"`/`iccid`/`lpaProfile`/`providerRef` ④**同期**（`onEsimSyncRequested`＝MyPage更新時に権威データ取得）⑤**残量アラート**（`DATA_USAGE`/`VALIDITY_USAGE` webhook→通知）⑥**topup**（※データ枯渇が要るため実検証は後回し可＝別途 or 擬似）⑦**cancel→Stripe返金→返金メール**（/admin返金） | **あなた購入**／私がデータ検証 | 小〜中 |
 | 0.7-2 | **topupリトライ不具合 修正** | `webhooks.ts` の `handleProvisioningFailure` で topup時 `esimLinkUuid` が常にundefined → リトライが必ず失敗する既存バグ（チップ task_14ec50b7）。esim_link解決を修正＋テスト | 私 | 小 |
 | 0.7-3 | **リファクタを本番反映** | P0–P5（挙動不変）を functions＋hosting へ。※`incidentRunRetryNow`/`adminMigrateIsActiveToBoolean` の削除確認プロンプトが出る（正常） | あなた（reauth＋deploy指示）／私が実行 | 小 |
 | 0.7-4 | **実トラフィック下の監視確認** | `provider_health.esimaccess`（残高/status）・低残高アラート・返金webhook・S9通知が実データで動くか目視 | 私＋あなた | 小 |
