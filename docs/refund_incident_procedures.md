@@ -1,6 +1,6 @@
 # 返金・障害対応手順（運用MD）
 
-更新: 2026-07-09 ／ 対象: yah.mobile 本番。関連: [日次運用](./ops_daily_runbook.md)｜[返金仕様](./spec_refund.md)｜[障害パターン定義](./system_fault_patterns_ja.md)
+更新: 2026-07-09 ／ 対象: yah.mobile 本番。関連: [運用ランブック ver.1.1](./runbook_solo_ops.md)｜[返金仕様](./spec_refund.md)｜[障害パターン定義](./system_fault_patterns_ja.md)
 本書は**運用者が実際に踏む手順**。設計/仕様の詳細は上記リンク。
 
 > 大原則：**お客様都合の返金は不可**。返金対象は「決済完了したが**当社側の問題**でサービス提供できない」ケースに限定。
@@ -36,7 +36,7 @@
 ## C. 障害対応フロー（症状別）
 | 症状 | 一次確認 | 対応 |
 |---|---|---|
-| **購入できない（全ユーザー）** | providerHealthCheck 通知／eSIMAccess残高 | 残高$0→**チャージ**（[日次運用§3](./ops_daily_runbook.md)）。API down→回復待ち（ガード自動）。招待制なら allowed_emails |
+| **購入できない（全ユーザー）** | providerHealthCheck 通知／eSIMAccess残高 | 残高$0→**チャージ**（[運用ランブック §5](./runbook_solo_ops.md)）。API down→回復待ち（ガード自動）。招待制なら allowed_emails |
 | **購入できない（特定ユーザー）** | 招待制ゲート | `allowed_emails` に追加 |
 | **決済OKだが発行されない** | /admin/orders で status | provisioning滞留→`esimRetryJob`が再試行。最終失敗→failed＋自動返金(Lane A)。手動督促は onEsimSyncRequested（マイページの再同期） |
 | **eSIMが「Ready to Install」のまま** | lastActiveAt | 有効化webhook(IN_USE)未達→マイページ再読込で自動sync。仕様は [[esimaccess-expirydate-install-deadline]] |

@@ -17,7 +17,7 @@
 | 関数API | [api_functions.md](./api_functions.md) |
 | データモデル | [firestore_schema.md](./firestore_schema.md) |
 | 返金・障害の運用手順 | [refund_incident_procedures.md](./refund_incident_procedures.md) |
-| 日次運用・残高チャージ | [ops_daily_runbook.md](./ops_daily_runbook.md) |
+| 日次運用・残高チャージ | [runbook_solo_ops.md](./runbook_solo_ops.md)（運用ランブック ver.1.1） |
 | 返金仕様/戦略 | [spec_refund.md](./spec_refund.md) / [design_refund_strategy.md](./design_refund_strategy.md) |
 | テスト | [test_coverage.md](./test_coverage.md) |
 | SEO/GEO | [seo_plan.md](./seo_plan.md) |
