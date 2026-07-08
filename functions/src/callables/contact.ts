@@ -4,7 +4,7 @@ import * as logger from "firebase-functions/logger";
  */
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { zodError } from "../_helpers";
-import { collections } from "../db";
+import { collections, getOrderById } from "../db";
 import { SubmitContactInquiryInput } from "../../../shared/schemas";
 
 const REGION = "asia-northeast1";
@@ -55,7 +55,27 @@ export const submitContactInquiry = onCall({ region: REGION, enforceAppCheck: tr
     }
   }
 
-  // 4. Save to Firestore
+  // 4. 注文スナップショット（refund等の対応用）: orderId が本人の注文なら
+  //    プラン名/金額等をサーバ側で確定して保存する（クライアント値は信用しない）。
+  let orderSnapshot: Record<string, unknown> | null = null;
+  if (data.orderId && request.auth?.uid) {
+    try {
+      const order = await getOrderById(data.orderId, request.auth.uid); // 所有者不一致は null
+      if (order) {
+        orderSnapshot = {
+          planName: order.planName ?? null,
+          amountJpy: order.amountJpy ?? null,
+          status: order.status ?? null,
+          orderType: order.orderType ?? null,
+          createdAt: order.createdAt ?? null,
+        };
+      }
+    } catch (err) {
+      logger.warn("[Contact] orderSnapshot lookup failed (continuing without it)", err);
+    }
+  }
+
+  // 5. Save to Firestore
   logger.info("[Contact] Preparing to save to Firestore");
   try {
     const payload = {
@@ -68,6 +88,7 @@ export const submitContactInquiry = onCall({ region: REGION, enforceAppCheck: tr
       status: "pending",
       userId: request.auth?.uid || null,
       orderId: data.orderId || null,
+      orderSnapshot, // 本人所有が確認できた注文のみ（admin/inquiries で表示）
       language: data.language || null, // 自動返信メールの言語判定（onContactCreated が参照）
       ipAddress,
       createdAt: now,

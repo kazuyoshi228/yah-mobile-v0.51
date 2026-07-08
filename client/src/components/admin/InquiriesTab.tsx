@@ -1,12 +1,134 @@
 /**
  * admin/InquiriesTab.tsx — お問い合わせ管理タブ (BaaS First版)
+ *
+ * 注文情報セクション（batch2-C）:
+ * - inquiry.orderSnapshot（送信時にサーバが本人所有を確認して保存）を表示。
+ * - 無ければ orderId から orders を直読して補完（admin は rules で全読取可）。
+ * - refundCancel カテゴリには「この注文を返金する」ボタン（adminRefundOrder・二重確認）。
+ * - email からこの顧客の注文を検索（直近5件）。
  */
 import { useFirestoreCollection } from "@/hooks/useFirestoreCollection";
 import { getFirebaseDb } from "@/lib/firebase";
-import { collection, query, orderBy, limit, doc, updateDoc } from "firebase/firestore";
-import { useState, useMemo } from "react";
+import { collection, query, orderBy, limit, doc, updateDoc, getDoc, getDocs, where } from "firebase/firestore";
+import { useState, useMemo, useEffect } from "react";
 import { toast } from "sonner";
 import { InquiryStatus, STATUS_COLORS, STATUS_LABELS } from "./types";
+import { callFunction, CALLABLE } from "@/lib/callable";
+
+// ─── 注文情報セクション（詳細パネル内） ────────────────────────────────────────
+type OrderInfo = {
+  id: string;
+  planName?: string | null;
+  amountJpy?: number | null;
+  status?: string | null;
+  orderType?: string | null;
+  createdAt?: number | null;
+};
+
+function OrderLine({ o }: { o: OrderInfo }) {
+  return (
+    <p className="text-black" style={{ fontSize: "0.8125rem" }}>
+      <span className="font-medium">{o.planName ?? "Japan eSIM"}</span>
+      {o.orderType === "topup" && <span className="ml-1.5 text-[0.55rem] bg-black text-white px-1.5 py-0.5 align-middle tracking-wider">TOP-UP</span>}
+      <span className="text-black/50">
+        {" "}· {o.amountJpy != null ? `¥${o.amountJpy.toLocaleString()}` : "—"} · {o.status ?? "—"}
+        {o.createdAt ? ` · ${new Date(o.createdAt).toLocaleDateString("ja-JP")}` : ""}
+      </span>
+      <span className="block font-mono text-black/40" style={{ fontSize: "0.65rem" }}>#{o.id}</span>
+    </p>
+  );
+}
+
+function InquiryOrderSection({ inquiry }: { inquiry: any }) {
+  const [order, setOrder] = useState<OrderInfo | null>(null);
+  const [customerOrders, setCustomerOrders] = useState<OrderInfo[] | null>(null);
+  const [refunding, setRefunding] = useState<"idle" | "processing" | "done">("idle");
+
+  // orderSnapshot（保存済み）優先。無ければ orderId から orders を直読。
+  useEffect(() => {
+    setOrder(null); setCustomerOrders(null); setRefunding("idle");
+    if (!inquiry?.orderId) return;
+    if (inquiry.orderSnapshot) {
+      setOrder({ id: inquiry.orderId, ...inquiry.orderSnapshot });
+      return;
+    }
+    getDoc(doc(getFirebaseDb(), "orders", inquiry.orderId))
+      .then((snap) => { if (snap.exists()) setOrder({ id: snap.id, ...(snap.data() as Omit<OrderInfo, "id">) }); })
+      .catch(() => setOrder(null));
+  }, [inquiry?.id, inquiry?.orderId, inquiry?.orderSnapshot]);
+
+  const searchCustomerOrders = async () => {
+    if (!inquiry?.email) return;
+    try {
+      const snap = await getDocs(query(
+        collection(getFirebaseDb(), "orders"),
+        where("userEmail", "==", inquiry.email),
+        orderBy("createdAt", "desc"),
+        limit(5),
+      ));
+      setCustomerOrders(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<OrderInfo, "id">) })));
+    } catch (err) {
+      toast.error("注文の検索に失敗しました: " + (err instanceof Error ? err.message : ""));
+    }
+  };
+
+  const handleRefund = async () => {
+    if (!order) return;
+    const amount = order.amountJpy != null ? `¥${order.amountJpy.toLocaleString()}` : "全額";
+    if (!window.confirm(`注文 #${order.id}\n${amount} を全額返金します。よろしいですか？`)) return;
+    if (!window.confirm("本当に実行しますか？この操作は取り消せません。")) return;
+    setRefunding("processing");
+    try {
+      await callFunction<{ orderId: string; reason: string }, { ok: boolean }>(
+        CALLABLE.adminRefundOrder, { orderId: order.id, reason: "manual" },
+      );
+      setRefunding("done");
+      toast.success("返金を受け付けました（確定は Stripe webhook 経由）");
+    } catch (err) {
+      setRefunding("idle");
+      toast.error("返金に失敗しました: " + (err instanceof Error ? err.message : ""));
+    }
+  };
+
+  return (
+    <div>
+      <p style={{ color: "rgba(0,0,0,0.35)", fontSize: "0.6rem", marginBottom: "0.5rem" }}>Order</p>
+      {order ? (
+        <div className="bg-[#F7F7F5] border border-[#E0E0E0] px-5 py-4 space-y-3">
+          <OrderLine o={order} />
+          {inquiry.category === "refundCancel" && (
+            refunding === "done" || order.status === "refunded" ? (
+              <p className="text-emerald-700" style={{ fontSize: "0.75rem" }}>✅ 返金済み／受付済み</p>
+            ) : (
+              <button onClick={handleRefund} disabled={refunding === "processing"}
+                className="px-3 py-1.5 border border-red-300 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
+                style={{ fontSize: "0.6875rem" }}>
+                {refunding === "processing" ? "返金処理中…" : "この注文を返金する"}
+              </button>
+            )
+          )}
+        </div>
+      ) : (
+        <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.3)" }}>注文情報なし（orderId 未添付）。</p>
+      )}
+      <div className="mt-2">
+        {customerOrders === null ? (
+          <button onClick={searchCustomerOrders} className="text-black/40 hover:text-black transition-colors" style={{ fontSize: "0.6875rem" }}>
+            🔍 この顧客（{inquiry.email}）の注文を検索
+          </button>
+        ) : customerOrders.length === 0 ? (
+          <p style={{ fontSize: "0.75rem", color: "rgba(0,0,0,0.3)" }}>このメールアドレスの注文は見つかりませんでした。</p>
+        ) : (
+          <div className="border border-[#E0E0E0] divide-y divide-[#F0F0F0] mt-1">
+            {customerOrders.map((o) => (
+              <div key={o.id} className="px-4 py-2.5"><OrderLine o={o} /></div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function InquiriesTab() {
   const [statusFilter, setStatusFilter] = useState<"all" | InquiryStatus>("all");
@@ -160,6 +282,9 @@ export function InquiriesTab() {
                   </p>
                 </div>
               </div>
+
+              {/* 注文情報＋返金（batch2-C） */}
+              <InquiryOrderSection inquiry={selectedInquiry} />
 
               <div>
                 <div className="flex items-center justify-between mb-2">

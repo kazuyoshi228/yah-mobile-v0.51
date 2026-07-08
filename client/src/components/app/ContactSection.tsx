@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, getDocs, doc, getDoc } from "firebase/firestore";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getFirebaseDb, getFirebaseApp } from "@/lib/firebase";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -15,6 +15,16 @@ interface FormData {
   category: string;
   detail: string;
   message: string;
+}
+
+/** URLプリフィル対象の注文（本人所有の確認済み・read-only 表示用） */
+interface PrefillOrder {
+  id: string;
+  planName: string | null;
+  amountJpy: number | null;
+  status: string;
+  orderType: string | null;
+  createdAt: number;
 }
 
 export default function ContactSection() {
@@ -35,6 +45,7 @@ export default function ContactSection() {
     esimSetup: ["qrCodeNotReceived", "cantScanQrCode", "installationFailed", "checkDeviceCompatibility"],
     connectionIssue: ["noConnectionAfterArrival", "slowSpeed", "dataStoppedWorking", "apnSettings"],
     accountOrders: ["orderNotShowing", "changeEmailAddress", "cantLogIn"],
+    refundCancel: ["esimNotDelivered", "topupNotApplied", "otherRefundRequest"],
     dataPrivacy: ["deleteMyAccount", "exportMyData", "correctMyData", "optOutMarketing"],
     other: ["notListedAbove"],
   };
@@ -47,6 +58,44 @@ export default function ContactSection() {
   useEffect(() => {
     setFormStartTime(Date.now());
   }, []);
+
+  // URLプリフィル（chat等の外部導線から: /contact?category=refundCancel&orderId=xxx&lang=ko）
+  const [prefillOrderId, setPrefillOrderId] = useState<string | null>(null);
+  const [prefillOrder, setPrefillOrder] = useState<PrefillOrder | null>(null);
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const cat = params.get("category");
+      if (cat && CATEGORY_DETAIL_KEYS[cat]) setFormData((prev) => ({ ...prev, category: cat }));
+      const oid = params.get("orderId");
+      if (oid) setPrefillOrderId(oid);
+      const lang = params.get("lang");
+      if (lang && ["en", "ko", "zh-CN", "zh-TW", "th"].includes(lang) && i18n.language !== lang) {
+        void i18n.changeLanguage(lang);
+      }
+    } catch { /* パラメータ不正は無視 */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // プリフィル注文の読み込み（本人の注文のみ表示。他人のIDはルールで読めず無視される）
+  useEffect(() => {
+    if (!prefillOrderId || !user?.uid) { setPrefillOrder(null); return; }
+    getDoc(doc(getFirebaseDb(), "orders", prefillOrderId))
+      .then((snap) => {
+        if (!snap.exists()) { setPrefillOrder(null); return; }
+        const d = snap.data() as { userId?: string; planName?: string; amountJpy?: number; status?: string; orderType?: string; createdAt?: number };
+        if (d.userId !== user.uid) { setPrefillOrder(null); return; }
+        setPrefillOrder({
+          id: snap.id,
+          planName: d.planName ?? null,
+          amountJpy: d.amountJpy ?? null,
+          status: d.status ?? "",
+          orderType: d.orderType ?? null,
+          createdAt: d.createdAt ?? 0,
+        });
+      })
+      .catch(() => setPrefillOrder(null));
+  }, [prefillOrderId, user?.uid]);
 
   useEffect(() => {
     if (locationDetected) return;
@@ -83,8 +132,9 @@ export default function ContactSection() {
     setFormError(null);
     setIsPending(true);
     try {
-      let orderId: string | null = null;
-      if (user?.uid) {
+      // 対象注文: URLプリフィル指定があればそれを優先、無ければログインユーザーの最新注文
+      let orderId: string | null = prefillOrderId;
+      if (!orderId && user?.uid) {
         try {
           const ordersRef = collection(getFirebaseDb(), "orders");
           const q = query(ordersRef, where("userId", "==", user.uid), orderBy("createdAt", "desc"), limit(1));
@@ -221,6 +271,27 @@ export default function ContactSection() {
                   ))}
                 </div>
               </div>
+
+              {/* プリフィル注文の確認カード（chat等から orderId 付きで来た場合・read-only） */}
+              {prefillOrder && (
+                <div className="border-b border-[#D7D7D7] py-5">
+                  <label className="text-label block mb-2 text-black/40">{t("contact.orderRefLabel", "Order in question")}</label>
+                  <div className="border border-[#D7D7D7] bg-[#FAFAF8] px-4 py-3">
+                    <p className="font-sans text-black text-[0.875rem] font-medium">
+                      {prefillOrder.planName ?? "Japan eSIM"}
+                      {prefillOrder.orderType === "topup" && (
+                        <span className="ml-2 text-[0.6rem] bg-black text-white px-1.5 py-0.5 tracking-[0.1em] align-middle">TOP-UP</span>
+                      )}
+                    </p>
+                    <p className="font-sans text-black/50 text-[0.75rem] mt-1">
+                      #{prefillOrder.id}
+                      {prefillOrder.amountJpy != null && <> · ¥{prefillOrder.amountJpy.toLocaleString()}</>}
+                      {prefillOrder.createdAt > 0 && <> · {new Date(prefillOrder.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}</>}
+                      {prefillOrder.status && <> · {prefillOrder.status}</>}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Detail */}
               <AnimatePresence>

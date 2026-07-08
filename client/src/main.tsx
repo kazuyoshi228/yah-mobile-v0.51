@@ -5,12 +5,16 @@ import "./index.css";
 import "./i18n"; // i18n初期化
 import { loadUmamiIfConsented } from "@/lib/analytics";
 import { initErrorReporting } from "@/lib/errorReporting";
+import { initChatAuthBridge } from "@/lib/chatBridge";
 
 // ブラウザの実行時エラー収集（PII非送信・S1(b)）を起動時に設置
 initErrorReporting();
 
 // 同意済みユーザーの場合のみ、サードパーティ解析を起動時に動的ロードする
 loadUmamiIfConsented();
+
+// chat ウィジェットへのログインSSO橋渡し（chat.yah.mobi からの要求に IDトークンを返す）
+initChatAuthBridge();
 
 const queryClient = new QueryClient({
   defaultOptions: {
