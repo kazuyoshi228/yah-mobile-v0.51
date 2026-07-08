@@ -14,13 +14,14 @@
 
 ---
 
-## v0.7 残り — 「動くことを証明する」
-| # | 項目 | 内容・指示 | 担当 | 状態 |
-|---|---|---|---|---|
-| **0.7-1** | **実発注 E2E 検証** | ①発行 ②QR/インストール ③`esim_links`（esimaccess/iccid/lpa/providerRef）④同期 まで**成功確認済み**。⑤残量アラート・⑥topup・⑦cancel→返金 は本番修正後に再確認 | あなた購入/私検証 | ✅ 主要導線OK（topup再テスト待ち） |
-| **0.7-2** | **実発注後の改善3件**（dev反映済） | ①期限表示 ②メール6言語 ③topupエラー可視化 ＋ topup IAM復旧（本番済） | 私 | ✅ dev / 🔲 本番反映（hosting＋functions）待ち |
-
-> 監視（残高/死活/返金/通知）は基本疎通確認済み。**topup を本番で1度通し（Stripeまで）確認**すれば決済系は完了。
+## v0.7 — 「動くことを証明する」✅ **完全クローズ（2026-07-08）**
+- **0.7-1 実発注E2E**：実購入(¥980)→発行→QR→**実接続**→**topup実決済(+1GB反映)**→有効化検知→実期限表示、全て本番で確認。
+- **0.7-2 実発注で発見した5件を修正・本番反映済み**：
+  ①eSIM期限表示（未有効化=Valid for/Install by、有効化後=Expires 日時） ②注文系メール6言語化
+  ③topup復旧（Cloud Run allUsers invoker欠落→401。IAM付与）＋エラー可視化（空catch廃止）
+  ④topup注文UX（TOP-UPバッジ／「適用済み・再インストール不要」表示／topupプラン名リネーム／YOUR eSIMカード削除）
+  ⑤eSIMAccess有効化検知（esimStatus IN_USE → lastActiveAt 記録。webhook＋sync両経路）
+- 残タスク（任意）：cancel→自動返金の実e2e（Lane A自体は基本疎通済み）。
 
 ---
 
