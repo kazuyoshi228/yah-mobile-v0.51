@@ -352,8 +352,10 @@ async function fulfillEsim(orderData: FsOrder) {
         provider: orderData.provider ?? "bappy",
         stripeSessionId: orderData.stripeSessionId ?? "",
         isTopup,
-        parentOrderId: isTopup ? orderData.esimLinkUuid : undefined,
-        esimLinkUuid: isTopup ? undefined : undefined,
+        // topup の親eSIMは providerRef(=esimLinkUuid) で直接解決するため esimLinkUuid を渡す。
+        // （旧実装は esimLinkUuid が常にundefined＋parentOrderId にUUIDを誤設定で、topupリトライが必ず失敗していた）
+        parentOrderId: null,
+        esimLinkUuid: isTopup ? (orderData.esimLinkUuid ?? null) : null,
       },
       err
     );

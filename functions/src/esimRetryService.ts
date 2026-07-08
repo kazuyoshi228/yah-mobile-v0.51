@@ -26,7 +26,7 @@ import {
   updateOrder,
   createEsimLink,
   createEsimActivation,
-  getEsimLinkByOrderId,
+  getEsimLinkByUuid,
   createNotification,
   getUserById,
   createRetryJob,
@@ -182,12 +182,12 @@ export async function processPendingRetries(): Promise<{ processed: number; succ
       await updateRetryJob(job.id, { status: "retrying", retryCount: attemptNum });
 
       if (job.isTopup) {
-        // Topup retry
-        if (!job.parentOrderId || !job.esimLinkUuid) {
-          throw new Error("Missing parentOrderId or esimLinkUuid for topup retry");
+        // Topup retry — 親eSIMは providerRef(=esimLinkUuid=esim_linksのdocID) で直接解決する。
+        if (!job.esimLinkUuid) {
+          throw new Error("Missing esimLinkUuid for topup retry");
         }
         const activation = await getProvider(job.provider).topup({ providerRef: job.esimLinkUuid, providerPlanId: job.bappyPlanId, transactionId: job.orderId });
-        const esimLink = await getEsimLinkByOrderId(job.parentOrderId);
+        const esimLink = await getEsimLinkByUuid(job.esimLinkUuid);
         if (!esimLink) throw new Error("Parent eSIM link not found");
         // bappyPlanId はドキュメントIDではなくフィールドで検索（ID規約の二重化に依存しない）
         const planQuery = await collections.plans.where("bappyPlanId", "==", job.bappyPlanId).limit(1).get();

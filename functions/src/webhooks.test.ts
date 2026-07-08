@@ -49,8 +49,20 @@ vi.mock("./db", () => {
 });
 
 vi.mock("./bappy", () => ({ createLink: vi.fn(), addTopupPlan: vi.fn() }));
-vi.mock("./mailer", () => ({ sendEmail: vi.fn(), buildEsimReadyEmail: vi.fn() }));
-vi.mock("./esimRetryService", () => ({ handleProvisioningFailure: vi.fn() }));
+vi.mock("./mailer", () => ({
+  sendEmail: vi.fn(),
+  buildEsimReadyEmail: vi.fn(() => ({ subject: "", html: "" })),
+  buildPurchaseReceivedEmail: vi.fn(() => ({ subject: "", html: "" })),
+  buildRefundCompletedEmail: vi.fn(() => ({ subject: "", html: "" })),
+}));
+const mockHandleProvisioningFailure = vi.fn();
+vi.mock("./esimRetryService", () => ({ handleProvisioningFailure: (...a: any[]) => mockHandleProvisioningFailure(...a) }));
+// 発行/トップアップのプロバイダ呼び出しをモック（topup を失敗させてリトライ登録を検証する）
+const mockProviderTopup = vi.fn();
+const mockProviderCreateEsim = vi.fn();
+vi.mock("./providers/types", () => ({
+  getProvider: () => ({ topup: (...a: any[]) => mockProviderTopup(...a), createEsim: (...a: any[]) => mockProviderCreateEsim(...a) }),
+}));
 
 // --- Import ---
 import { stripeWebhook } from "./webhooks";
@@ -186,5 +198,45 @@ describe("stripeWebhook robustness tests", () => {
     expect(mockUpdateOrder).not.toHaveBeenCalled();
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.send).toHaveBeenCalledWith("Internal server error");
+  });
+
+  it("4. topup発行失敗 → handleProvisioningFailure に esimLinkUuid を渡す（旧バグ回帰防止）", async () => {
+    const eventId = "evt_topup_fail";
+    setupMockEvent("checkout.session.completed", eventId, {
+      id: "cs_topup",
+      amount_total: 1800,
+      amount_subtotal: 1800,
+      metadata: { order_id: "order_topup" },
+    });
+    mockEventRefGet.mockResolvedValue({ exists: false, data: () => undefined });
+    // topup注文（親eSIMのUUIDを持つ）
+    mockGetOrderByStripeSessionId.mockResolvedValue({
+      id: "order_topup",
+      userId: "user_1",
+      amountJpy: 1800,
+      status: "pending",
+      orderType: "topup",
+      esimLinkUuid: "parent_uuid",
+      provider: "esimaccess",
+      stripeSessionId: "cs_topup",
+    });
+    // topup 実行を失敗させる → catch → handleProvisioningFailure
+    mockProviderTopup.mockRejectedValue(new Error("topup provider down"));
+
+    await (stripeWebhook as any)(req, res);
+
+    // ★回帰防止: esimLinkUuid=親UUID / parentOrderId=null / isTopup=true で渡る
+    expect(mockHandleProvisioningFailure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderId: "order_topup",
+        isTopup: true,
+        esimLinkUuid: "parent_uuid",
+        parentOrderId: null,
+        provider: "esimaccess",
+      }),
+      expect.any(Error),
+    );
+    // 失敗時は pending_retry に落ちる
+    expect(mockUpdateOrder).toHaveBeenCalledWith("order_topup", { status: "pending_retry" });
   });
 });
