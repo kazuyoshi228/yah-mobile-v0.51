@@ -50,14 +50,16 @@ export function Step0Plan() {
           <button
             key={p.planId}
             onClick={() => { setDrawerDays(p.days); setDrawerGb(p.gb); setStep(1); }}
-            className="relative text-left bg-white p-5 transition-colors duration-150 hover:bg-[#F7F7F7] active:scale-[0.98]"
+            className="relative text-left bg-white p-5 transition-colors duration-150 hover:bg-[#F7F7F7] active:scale-[0.98] flex flex-col items-start"
           >
+            {/* POPULAR はカード左上に重ねる外出しバッジ（全カードの行を揃える） */}
             {p.popular && (
-              <p className="font-sans font-medium text-black mb-1 text-[0.55rem] tracking-[0.22em] uppercase">{t("drawer.popular")}</p>
+              <p className="absolute top-0 left-0 bg-black text-white font-sans font-medium px-2 py-1 text-[0.55rem] tracking-[0.18em] uppercase">{t("drawer.popular")}</p>
             )}
             <p className="font-sans font-light text-black text-[1.5rem] tracking-[-0.02em]">{p.gb}</p>
             <p className="font-sans text-black/40 mt-0.5 text-[0.75rem]">{t("plans.validUpTo", { days: p.days })}</p>
-            <p className="font-sans font-medium text-black mt-1.5 text-[1.4rem] tracking-[-0.01em]">¥{p.priceJpy.toLocaleString()}</p>
+            {/* 価格は下端アンカー（行数差でも価格行が揃う） */}
+            <p className="font-sans font-medium text-black mt-auto pt-2 text-[1.4rem] tracking-[-0.01em]">¥{p.priceJpy.toLocaleString()}</p>
           </button>
         ))}
       </div>

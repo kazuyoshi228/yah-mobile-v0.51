@@ -90,18 +90,20 @@ export default function PlansSection({ onSelectPlan }: PlansSectionProps) {
                   key={opt.planId}
                   whileTap={{ scale: 0.97 }}
                   onClick={() => handleSelect(opt)}
-                  className={`relative bg-white p-6 text-left transition-colors duration-150 ${
+                  className={`relative bg-white p-6 text-left transition-colors duration-150 flex flex-col items-start ${
                     selected?.planId === opt.planId ? "ring-2 ring-black ring-inset" : "hover:bg-[#F0F0F0]"
                   }`}
                 >
+                  {/* POPULAR はカード左上に重ねる外出しバッジ（カード内フローに影響させず全カードの行を揃える） */}
                   {opt.popular && (
-                    <p className="font-sans font-medium text-black/40 mb-2 text-[0.6rem] tracking-[0.22em] uppercase">{t("plans.popular")}</p>
+                    <p className="absolute top-0 left-0 bg-black text-white font-sans font-medium px-2 py-1 text-[0.55rem] tracking-[0.18em] uppercase">{t("plans.popular")}</p>
                   )}
                   <p className="font-sans font-light text-black text-[clamp(1.5rem,3vw,2rem)] leading-[1.1] tracking-[-0.02em]">
                     {opt.gb}
                   </p>
                   <p className="font-sans text-black/40 mt-1 text-[0.75rem]">{t("plans.validUpTo", { days: opt.days })}</p>
-                  <p className="font-sans font-medium text-black mt-2 text-[1.4rem] tracking-[-0.01em]">{formatPrice(opt.priceJpy)}</p>
+                  {/* 価格は下端アンカー（折返し行数の差でも全カードの価格行が揃う） */}
+                  <p className="font-sans font-medium text-black mt-auto pt-3 text-[1.4rem] tracking-[-0.01em]">{formatPrice(opt.priceJpy)}</p>
                   {selected?.planId === opt.planId && (
                     <motion.div
                       layoutId="gb-check"
