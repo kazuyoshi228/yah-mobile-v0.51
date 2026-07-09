@@ -101,7 +101,7 @@ export default function PlansSection({ onSelectPlan }: PlansSectionProps) {
                     {opt.gb}
                   </p>
                   <p className="font-sans text-black/40 mt-1 text-[0.75rem]">{t("plans.validUpTo", { days: opt.days })}</p>
-                  <p className="font-sans font-medium text-black mt-2 text-[0.9375rem]">{formatPrice(opt.priceJpy)}</p>
+                  <p className="font-sans font-medium text-black mt-2 text-[1.4rem] tracking-[-0.01em]">{formatPrice(opt.priceJpy)}</p>
                   {selected?.planId === opt.planId && (
                     <motion.div
                       layoutId="gb-check"

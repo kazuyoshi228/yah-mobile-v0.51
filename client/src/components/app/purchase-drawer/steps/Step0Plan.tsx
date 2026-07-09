@@ -57,7 +57,7 @@ export function Step0Plan() {
             )}
             <p className="font-sans font-light text-black text-[1.5rem] tracking-[-0.02em]">{p.gb}</p>
             <p className="font-sans text-black/40 mt-0.5 text-[0.75rem]">{t("plans.validUpTo", { days: p.days })}</p>
-            <p className="font-sans font-medium text-black mt-1.5 text-[0.9375rem]">¥{p.priceJpy.toLocaleString()}</p>
+            <p className="font-sans font-medium text-black mt-1.5 text-[1.4rem] tracking-[-0.01em]">¥{p.priceJpy.toLocaleString()}</p>
           </button>
         ))}
       </div>
