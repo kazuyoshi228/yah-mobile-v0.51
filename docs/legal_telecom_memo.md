@@ -68,4 +68,51 @@ eSIMAccess（外国法人）＝ eSIM プロファイル発行者
 - eSIMAccess との resale 契約書（該当条文）
 - 購入完了メール・QR引き渡し画面のサンプル
 
+---
+
+# 追補（2026-07-10・初回相談を受けて）：「販売後の保守に見える機能」への反論と是正案
+
+初回相談でのご指摘——**通信量の確認・返金・topup 等のアフターケアが「売った後も保守している＝役務提供の主体」に見える**——について、各機能の法的性格づけの整理と、是正実装案・規約文案を提示します。**この構成で非該当整理が立つか、文言の修正指示をいただきたい**です。
+
+## 6.1 各機能の再性格づけ
+
+| 機能 | 実態 | 当社の性格づけ |
+|---|---|---|
+| データ残量・有効期限の表示 | **提供者（eSIMAccess）の Partner API の照会結果をそのまま表示**。当社システムは通信に介在せず、独自の計測手段を持たない | 提供者情報の**取次表示**。旅行代理店が航空会社APIでフライト状況を表示する行為と同型 |
+| 返金 | 対象は「**当社起因で商品（アクティベーションコード）を納品できなかった場合**」のみ。**通信品質・圏外・速度を理由とする返金は行わない**（現行ポリシー・購入前同意取得済み） | **売主としての商品代金の返金**（物販の債務不履行対応）。通信役務の品質保証・補償ではない |
+| topup（データ追加） | 追加のアクティベーション権を都度販売（残高チャージ型ではない） | **追加商品の販売**。既存回線の契約変更・保守ではない |
+| カスタマーサポート | 設定案内・購入相談。**回線障害・ネットワーク起因の問題は ICCID を添えて eSIMAccess サポートへエスカレーション**（実運用） | 販売店の通常業務（量販店のサポートカウンター相当）＋提供者への**取次窓口** |
+
+## 6.2 類例
+
+- **旅行代理店（OTA）**: Expedia 等は販売後も予約管理・変更・払い戻し・フライト状況表示を行うが、航空会社（運送人）ではない。**本人のために代理店がアフターケアを行うのは代理店業の通常形態**であり、役務提供主体性の徴表ではない。
+- **家電量販店のプリペイドSIM販売**: 店頭サポート・返品対応を行っても電気通信事業者ではない。
+
+## 6.3 是正実装案（機能の削除なし・表示と契約の3点）
+
+1. **UI帰属表示**: マイページ・注文詳細の使用量表示等に
+   *"Network service and usage data provided by our partner carrier."* の1行を追加。
+2. **利用規約への条項追加**（文案は 6.4）。
+3. **返金ポリシーの性格づけ補強**: 「売主として商品を納品できなかった場合の代金返金」である旨を明記。
+
+## 6.4 規約追加条項の文案（先生の確認対象）
+
+**日本語案（第◯条 通信役務の提供者）**
+1. 本サービスで販売する eSIM に係るデータ通信役務（以下「通信役務」）は、当社の提携先である通信事業者（eSIMAccess ※正式法人名は契約書で確認・およびその接続先の通信事業者。以下「提供者」）が提供します。当社は通信役務の提供主体ではなく、そのアクティベーションコード（利用権）の販売および購入者サポートを行う販売店です。
+2. 通信役務の品質、通信可能区域、通信の中断・障害その他通信役務の提供に関する事項は提供者の責任に属します。当社はこれらに関するお問い合わせについて、提供者への取次ぎを行います。
+3. 当社が行う返金は、当社が商品（アクティベーションコード）を納品できなかった場合における売主としての商品代金の返金であり、通信役務の品質に関する保証または補償ではありません。
+4. マイページ等に表示されるデータ残量・有効期限等の情報は、提供者のシステムから取得した情報を購入者の便宜のために表示するものです。
+
+**English draft (Article X — Telecommunications Service Provider)**
+1. The mobile data service associated with eSIMs sold on this site (the "Service") is provided by our partner telecommunications carriers (eSIMAccess and its partner carriers; the "Provider"). yah.mobile (Bonfire Inc.) is a retailer that sells activation codes for the Service and provides customer support; we are not the provider of the telecommunications service itself.
+2. The quality, coverage, interruption or failure of the Service are matters within the Provider's responsibility. We act as a contact point and escalate such inquiries to the Provider.
+3. Any refund we make is a refund of the purchase price by us as the seller where we were unable to deliver the product (activation code); it is not a warranty or compensation relating to the quality of the telecommunications service.
+4. Data balance, validity and similar information shown in your account is retrieved from the Provider's systems and displayed for your convenience.
+
+## 6.5 先生に伺いたいこと（追補分）
+
+1. 6.1〜6.4 の構成・文言で「電気通信役務の提供主体は提供者であり、当社は販売店」という**非該当整理は立ちますか**。不足・修正があればご指示ください。
+2. 総務省（総合通信局）への**匿名の事実関係照会**（社名を出さない前提・先生経由）をお願いできますか。照会文には本メモ §1・6.1 の事実関係をそのまま使えます。
+3. UI帰属表示・規約改定の完了を待たずにサービス公開（招待制解除）を進めることの当否（当社としては規約改定を公開前に完了させる予定です）。
+
 以上
