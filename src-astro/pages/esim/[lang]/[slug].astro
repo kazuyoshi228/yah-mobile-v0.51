@@ -1,0 +1,148 @@
+---
+/**
+ * /esim/[lang]/[slug] — GEO静的ガイド（design_astro_geo_p1.md）
+ * 描画順: directAnswer → 本文(MD→HTML) → プラン表(SSOT) → FAQ。
+ * 購入は既存SPAへ 1遷移 deep-link（/app?open=true&plan=<docID>）。P1では島化しない。
+ */
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { getEsimGuides, stripTitlePrefix, type EsimGuide } from "../../../lib/esimGuides";
+import { getPlansByBindings, type Plan } from "../../../lib/plans";
+import { renderMarkdown } from "../../../lib/markdown";
+
+export async function getStaticPaths() {
+  const guides = await getEsimGuides();
+  const paths: { params: { lang: string; slug: string }; props: { guide: EsimGuide; lang: string } }[] = [];
+  for (const guide of guides) {
+    for (const lang of guide.languages ?? []) {
+      if (!guide.translations?.[lang]) continue;
+      paths.push({ params: { lang, slug: guide.slug }, props: { guide, lang } });
+    }
+  }
+  return paths;
+}
+
+const { guide, lang } = Astro.props as { guide: EsimGuide; lang: string };
+const t = guide.translations[lang];
+
+const displayTitle = stripTitlePrefix(t.title);
+const metaTitle = t.metaTitle || displayTitle;
+const metaDescription = t.metaDescription || t.excerpt || "";
+const bodyHtml = renderMarkdown(t.body || "");
+
+// SSOT からプラン表を焼く
+const plans: Plan[] = await getPlansByBindings(guide.priceBindings ?? []);
+const yen = (n: number | null) => (n == null ? "—" : `¥${n.toLocaleString("ja-JP")}`);
+
+// 「◯年◯月◯日時点」キャプション
+const confirmedLabel = (() => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(guide.confirmedDate || "");
+  return m ? `${m[1]}年${Number(m[2])}月${Number(m[3])}日時点` : null;
+})();
+
+// canonical(絶対) と hreflang
+const site = Astro.site ?? new URL("https://yah.mobi");
+const canonicalPath = guide.canonical || `/esim/${lang}/${guide.slug}`;
+const canonical = new URL(canonicalPath, site).href;
+const alternates = (guide.languages ?? []).map((l) => ({
+  lang: l,
+  href: new URL(`/esim/${l}/${guide.slug}`, site).href,
+}));
+
+// deep-link（既存SPAドロワー起動）
+const buyHref = (planId: string) => `/app?open=true&plan=${encodeURIComponent(planId)}`;
+const primaryPlanId = plans[0]?.id;
+
+// JSON-LD（Article + FAQPage）
+const iso = (ms?: number) => (ms ? new Date(ms).toISOString() : undefined);
+const articleLd: Record<string, unknown> = {
+  "@context": "https://schema.org",
+  "@type": guide.schemaType || "Article",
+  headline: displayTitle,
+  description: metaDescription,
+  inLanguage: lang,
+  mainEntityOfPage: canonical,
+  author: { "@type": "Organization", name: guide.author || "yah.mobile" },
+  publisher: { "@type": "Organization", name: "yah.mobile" },
+};
+if (iso(guide.publishedAt as unknown as number)) articleLd.datePublished = iso(guide.publishedAt as unknown as number);
+if (iso(guide.updatedAt as unknown as number)) articleLd.dateModified = iso(guide.updatedAt as unknown as number);
+if (guide.thumbnailUrl) articleLd.image = guide.thumbnailUrl;
+
+const faqLd =
+  t.faq && t.faq.length > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: t.faq.map((f) => ({
+          "@type": "Question",
+          name: f.q,
+          acceptedAnswer: { "@type": "Answer", text: f.a },
+        })),
+      }
+    : null;
+const jsonLd = [articleLd, ...(faqLd ? [faqLd] : [])];
+---
+<BaseLayout
+  title={metaTitle}
+  description={metaDescription}
+  canonical={canonical}
+  lang={lang}
+  ogImage={guide.thumbnailUrl}
+  alternates={alternates}
+  jsonLd={jsonLd}
+>
+  <article>
+    <h1>{displayTitle}</h1>
+
+    {t.directAnswer && <p class="direct-answer">{t.directAnswer}</p>}
+
+    <div class="article-body" set:html={bodyHtml} />
+
+    {plans.length > 0 && (
+      <section aria-label="プラン" class="plans-section">
+        <h2>プランと料金</h2>
+        <table class="plans">
+          <thead>
+            <tr>
+              <th>プラン</th>
+              <th>データ</th>
+              <th>有効期間</th>
+              <th>料金</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {plans.map((p) => (
+              <tr>
+                <td>{p.name}</td>
+                <td>{p.dataGb != null ? `${p.dataGb}GB` : "—"}</td>
+                <td>{p.validityDays != null ? `${p.validityDays}日` : "—"}</td>
+                <td class="plan-price">{yen(p.priceJpy)}</td>
+                <td><a class="buy-btn" href={buyHref(p.id)}>購入</a></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {confirmedLabel && <p class="table-caption">料金は{confirmedLabel}のものです。</p>}
+      </section>
+    )}
+
+    {t.faq && t.faq.length > 0 && (
+      <section class="faq" aria-label="よくある質問">
+        <h2>よくある質問</h2>
+        {t.faq.map((f) => (
+          <div>
+            <h3>{f.q}</h3>
+            <p class="faq-a">{f.a}</p>
+          </div>
+        ))}
+      </section>
+    )}
+
+    {primaryPlanId && (
+      <div class="cta-row">
+        <a class="buy-btn" href={buyHref(primaryPlanId)}>eSIMを購入する</a>
+      </div>
+    )}
+  </article>
+</BaseLayout>

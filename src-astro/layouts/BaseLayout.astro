@@ -1,0 +1,104 @@
+---
+/**
+ * BaseLayout.astro — 公開面（GEO/静的）の <head> と土台。
+ * canonical(絶対)・hreflang・OG・JSON-LD(Article/FAQ) を受け取り出力する。
+ */
+interface HreflangAlt { lang: string; href: string }
+interface Props {
+  title: string;
+  description?: string;
+  canonical: string; // 絶対URL
+  lang: string;
+  ogImage?: string | null;
+  alternates?: HreflangAlt[];
+  jsonLd?: unknown[]; // application/ld+json として個別に出力
+}
+const {
+  title,
+  description = "",
+  canonical,
+  lang,
+  ogImage = null,
+  alternates = [],
+  jsonLd = [],
+} = Astro.props as Props;
+---
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="canonical" href={canonical} />
+    {alternates.map((a) => (
+      <link rel="alternate" hreflang={a.lang} href={a.href} />
+    ))}
+    {alternates.length > 0 && (
+      <link rel="alternate" hreflang="x-default" href={alternates[0].href} />
+    )}
+    <!-- Open Graph -->
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="yah.mobile" />
+    <meta property="og:title" content={title} />
+    {description && <meta property="og:description" content={description} />}
+    <meta property="og:url" content={canonical} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <meta name="twitter:card" content={ogImage ? "summary_large_image" : "summary"} />
+    {jsonLd.map((obj) => (
+      <script type="application/ld+json" set:html={JSON.stringify(obj)} />
+    ))}
+    <style is:global>
+      :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+        line-height: 1.75;
+        color: #1a1a1a;
+        background: #fff;
+      }
+      .wrap { max-width: 720px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+      h1 { font-size: 1.75rem; line-height: 1.4; margin: 0 0 1rem; }
+      h2 { font-size: 1.3rem; margin: 2.25rem 0 0.75rem; }
+      h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+      p { margin: 0 0 1rem; }
+      a { color: #0b63ce; }
+      .direct-answer {
+        background: #f5f8ff;
+        border: 1px solid #d9e4fb;
+        border-left: 4px solid #0b63ce;
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        margin: 0 0 2rem;
+        font-size: 1.02rem;
+      }
+      .article-body :first-child { margin-top: 0; }
+      table.plans { width: 100%; border-collapse: collapse; margin: 0.75rem 0 0.5rem; }
+      table.plans th, table.plans td { border: 1px solid #e3e3e3; padding: 0.6rem 0.75rem; text-align: left; font-size: 0.95rem; }
+      table.plans th { background: #fafafa; font-weight: 600; }
+      .plan-price { font-weight: 700; white-space: nowrap; }
+      .buy-btn {
+        display: inline-block; padding: 0.45rem 0.9rem; border-radius: 999px;
+        background: #0b63ce; color: #fff; text-decoration: none; font-weight: 600; font-size: 0.9rem;
+      }
+      .table-caption { font-size: 0.82rem; color: #666; margin: 0.25rem 0 2rem; }
+      .faq h3 { font-size: 1.02rem; margin-bottom: 0.25rem; }
+      .faq-a { color: #333; margin-bottom: 1.25rem; }
+      .cta-row { margin: 2.5rem 0 1rem; }
+      @media (prefers-color-scheme: dark) {
+        body { color: #e8e8e8; background: #111; }
+        .direct-answer { background: #10203a; border-color: #234; border-left-color: #4a90e2; }
+        table.plans th { background: #1b1b1b; }
+        table.plans th, table.plans td { border-color: #333; }
+        .table-caption, .faq-a { color: #aaa; }
+        a { color: #6db3ff; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <slot />
+    </main>
+  </body>
+</html>
