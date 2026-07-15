@@ -7,8 +7,9 @@
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import { getEsimGuides, stripTitlePrefix, type EsimGuide } from "../../../lib/esimGuides";
 import { getPlansByBindings, type Plan } from "../../../lib/plans";
+import { getCompetitorTable, type CompareTable } from "../../../lib/competitor";
 import { renderMarkdown } from "../../../lib/markdown";
-import { getUi, formatAsOf } from "../../../lib/ui-i18n";
+import { getUi, formatAsOf, formatCompareNote } from "../../../lib/ui-i18n";
 
 export async function getStaticPaths() {
   const guides = await getEsimGuides();
@@ -35,8 +36,12 @@ const bodyHtml = renderMarkdown(t.body || "");
 const plans: Plan[] = await getPlansByBindings(guide.priceBindings ?? []);
 const yen = (n: number | null) => (n == null ? "—" : `¥${n.toLocaleString("ja-JP")}`);
 
+// 競合比較表（SSOT: competitorPlans/main）。feed の showCompetitorTable が真のときのみ。
+const competitor: CompareTable | null = guide.showCompetitorTable === true ? await getCompetitorTable() : null;
+
 // 料金基準日キャプション（言語別）
 const asOfLabel = formatAsOf(lang, guide.confirmedDate);
+const compareNote = formatCompareNote(lang, guide.confirmedDate);
 
 // canonical(絶対) と hreflang
 const site = Astro.site ?? new URL("https://yah.mobi");
@@ -123,6 +128,41 @@ const jsonLd = [articleLd, ...(faqLd ? [faqLd] : [])];
           </tbody>
         </table>
         {asOfLabel && <p class="table-caption">{asOfLabel}</p>}
+      </section>
+    )}
+
+    {competitor && (
+      <section class="compare" aria-label={ui.compareTitle}>
+        <h2>{ui.compareTitle}</h2>
+        <div class="compare-scroll">
+          <table class="compare-table">
+            <thead>
+              <tr>{competitor.columns.map((c) => <th>{c.label}</th>)}</tr>
+            </thead>
+            <tbody>
+              {competitor.rows.map((row) => (
+                <tr class={row.highlight ? "is-hl" : ""}>
+                  {competitor.columns.map((col, ci) => {
+                    const val = String(row[col.colKey] ?? "");
+                    if (col.colKey === "service" || ci === 0) {
+                      return <td class="c-service">{val}</td>;
+                    }
+                    if (col.colKey === "pricePerGb" && row.highlight) {
+                      return (
+                        <td>
+                          <span class="c-pricegb">{val}</span>
+                          <span class="c-best">{ui.bestValue}</span>
+                        </td>
+                      );
+                    }
+                    return <td>{val}</td>;
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {compareNote && <p class="table-caption">{compareNote}</p>}
       </section>
     )}
 

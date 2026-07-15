@@ -22,6 +22,8 @@ export interface UiStrings {
   buy: string;
   buyCta: string;
   faqTitle: string;
+  compareTitle: string;
+  bestValue: string;
   /** langロケールでの表示名（言語切替リンクのラベル用） */
   nativeName: string;
 }
@@ -44,6 +46,8 @@ export const UI: Record<string, UiStrings> = {
     buy: "購入",
     buyCta: "eSIMを購入する",
     faqTitle: "よくある質問",
+    compareTitle: "他社eSIMとの料金比較",
+    bestValue: "BEST VALUE",
     nativeName: "日本語",
   },
   // en は未localized言語のフォールバック（SPA nav の英語ラベルに準拠）
@@ -64,6 +68,8 @@ export const UI: Record<string, UiStrings> = {
     buy: "Buy",
     buyCta: "Get your eSIM",
     faqTitle: "FAQ",
+    compareTitle: "How we compare",
+    bestValue: "BEST VALUE",
     nativeName: "English",
   },
 };
@@ -83,4 +89,16 @@ export function formatAsOf(lang: string, confirmedDate?: string): string | null 
   // en 系フォールバック（月名短縮）
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   return `Prices as of ${months[Number(mo) - 1]} ${Number(d)}, ${y}.`;
+}
+
+/** 競合表の注記（他社料金は公開情報に基づく目安である旨・景表法配慮）。 */
+export function formatCompareNote(lang: string, confirmedDate?: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(confirmedDate || "");
+  if (!m) return lang === "ja" ? "他社の料金は公開情報に基づく目安です。" : "Competitor prices are estimates based on public information.";
+  const [, y, mo, d] = m;
+  if (lang === "ja") {
+    return `他社の料金は公開情報に基づく${y}年${Number(mo)}月${Number(d)}日時点の目安です。`;
+  }
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `Competitor prices are estimates based on public info as of ${months[Number(mo) - 1]} ${Number(d)}, ${y}.`;
 }

@@ -202,6 +202,31 @@ const NAV = [
       }
       .buy-btn:hover { opacity: 0.9; }
       .table-caption { font-size: 0.82rem; color: var(--brand-muted); margin: 0.4rem 0 2rem; }
+
+      /* ── 競合比較表（SPA ComparisonTable を静的再現：ハイライト行反転＋BEST VALUE） ── */
+      .compare-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0.75rem 0 0.5rem; }
+      table.compare-table {
+        width: 100%; border-collapse: collapse;
+        font-family: "National2", sans-serif; font-size: 0.9rem; white-space: nowrap;
+      }
+      .compare-table th {
+        background: var(--brand-ink); color: var(--brand-bg);
+        font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em;
+        font-size: 0.7rem; padding: 0.6rem 0.85rem; text-align: left;
+      }
+      .compare-table td {
+        border-bottom: 1px solid var(--brand-line);
+        padding: 0.7rem 0.85rem; color: var(--brand-muted);
+      }
+      .compare-table td.c-service { color: var(--brand-ink); font-weight: 500; }
+      .compare-table tr.is-hl td { background: var(--brand-ink); color: var(--brand-bg); font-weight: 500; }
+      .c-best {
+        display: inline-block; margin-left: 0.45rem;
+        background: var(--brand-bg); color: var(--brand-ink);
+        font-size: 0.6rem; letter-spacing: 0.06em; font-weight: 600;
+        padding: 0.12rem 0.4rem; vertical-align: middle;
+      }
+
       .faq h3 { font-size: 1.02rem; margin-bottom: 0.25rem; }
       .faq-a { color: var(--brand-ink); opacity: 0.85; margin-bottom: 1.25rem; }
       .cta-row { margin: 2.5rem 0 1rem; }
