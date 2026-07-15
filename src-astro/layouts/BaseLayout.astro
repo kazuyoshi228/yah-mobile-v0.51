@@ -1,8 +1,11 @@
 ---
 /**
- * BaseLayout.astro — 公開面（GEO/静的）の <head> と土台。
- * canonical(絶対)・hreflang・OG・JSON-LD(Article/FAQ) を受け取り出力する。
+ * BaseLayout.astro — 公開面(GEO/静的)の <head> ＋ ブランド共通ヘッダー。
+ * canonical/hreflang/OG/JSON-LD に加え、yah.mobi 共通の静的メニューバーを描画する。
+ * ヘッダーは島化しない（react-i18next/Firebase/wouter を積まない）。ラベルは lang でビルド時確定。
  */
+import { getUi } from "../lib/ui-i18n";
+
 interface HreflangAlt { lang: string; href: string }
 interface Props {
   title: string;
@@ -11,7 +14,7 @@ interface Props {
   lang: string;
   ogImage?: string | null;
   alternates?: HreflangAlt[];
-  jsonLd?: unknown[]; // application/ld+json として個別に出力
+  jsonLd?: unknown[];
 }
 const {
   title,
@@ -22,6 +25,16 @@ const {
   alternates = [],
   jsonLd = [],
 } = Astro.props as Props;
+
+const ui = getUi(lang);
+const NAV = [
+  { label: ui.navHome, href: "/app" },
+  { label: ui.navBuy, href: "/app?open=true" },
+  { label: ui.navPlans, href: "/app#plans" },
+  { label: ui.navFaq, href: "/app#faq" },
+  { label: ui.navChat, href: "/app#chat" },
+  { label: ui.navContact, href: "/app#contact" },
+];
 ---
 <!doctype html>
 <html lang={lang}>
@@ -37,7 +50,6 @@ const {
     {alternates.length > 0 && (
       <link rel="alternate" hreflang="x-default" href={alternates[0].href} />
     )}
-    <!-- Open Graph -->
     <meta property="og:type" content="article" />
     <meta property="og:site_name" content="yah.mobile" />
     <meta property="og:title" content={title} />
@@ -49,54 +61,196 @@ const {
       <script type="application/ld+json" set:html={JSON.stringify(obj)} />
     ))}
     <style is:global>
-      :root { color-scheme: light dark; }
+      /* yah.mobile ブランドフォント（SPAと同一の Storage 配信 OTF。CSP font-src 許可済み） */
+      @font-face {
+        font-family: "National2";
+        src: url("https://storage.googleapis.com/yah-mobile-v1-3ed24.firebasestorage.app/assets/fonts/National2-Regular.otf") format("opentype");
+        font-weight: 400; font-style: normal; font-display: swap;
+      }
+      @font-face {
+        font-family: "National2";
+        src: url("https://storage.googleapis.com/yah-mobile-v1-3ed24.firebasestorage.app/assets/fonts/National2-Medium.otf") format("opentype");
+        font-weight: 500; font-style: normal; font-display: swap;
+      }
+
+      :root {
+        color-scheme: light dark;
+        --brand-ink: #231815;      /* ブランドの黒（ロゴ/本文） */
+        --brand-bg: #ffffff;
+        --brand-line: #d7d7d7;     /* 罫線（ライト） */
+        --brand-line-soft: #ececec;
+        --brand-muted: #666;
+        --brand-th-bg: #f7f7f7;
+        --brand-accent: #0b63ce;
+        --hdr-bg: rgba(255, 255, 255, 0.96);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --brand-ink: #f2f2f2;
+          --brand-bg: #111111;
+          --brand-line: #3a3a3a;   /* 添付のダーク表と同様、視認できる濃さ */
+          --brand-line-soft: #2a2a2a;
+          --brand-muted: #a5a5a5;
+          --brand-th-bg: #1a1a1a;
+          --hdr-bg: rgba(17, 17, 17, 0.96);
+        }
+      }
+
       * { box-sizing: border-box; }
       body {
         margin: 0;
-        font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+        font-family: "National2", system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
         line-height: 1.75;
-        color: #1a1a1a;
-        background: #fff;
+        color: var(--brand-ink);
+        background: var(--brand-bg);
+        -webkit-font-smoothing: antialiased;
       }
-      .wrap { max-width: 720px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
-      h1 { font-size: 1.75rem; line-height: 1.4; margin: 0 0 1rem; }
-      h2 { font-size: 1.3rem; margin: 2.25rem 0 0.75rem; }
-      h3 { font-size: 1.1rem; margin: 1.75rem 0 0.5rem; }
+      a { color: var(--brand-accent); }
+
+      /* ── 共通ヘッダー（yah.mobi ブランドバー・静的） ── */
+      .site-header {
+        position: sticky; top: 0; z-index: 50;
+        background: var(--hdr-bg);
+        -webkit-backdrop-filter: saturate(180%) blur(10px);
+        backdrop-filter: saturate(180%) blur(10px);
+        border-bottom: 1px solid var(--brand-line);
+        color: var(--brand-ink);
+      }
+      .hdr-inner {
+        max-width: 1120px; margin: 0 auto; padding: 0 1.5rem;
+        height: 64px; display: flex; align-items: center; justify-content: space-between;
+      }
+      .hdr-logo { display: inline-flex; align-items: center; color: inherit; }
+      .hdr-logo svg { height: 30px; width: auto; display: block; }
+      /* インラインSVGのfill属性をテーマ色で上書き（ライト=黒/ダーク=白） */
+      .hdr-logo svg path, .hdr-logo svg polygon { fill: currentColor; }
+
+      .hdr-nav { display: flex; align-items: center; gap: 1.75rem; }
+      .hdr-link {
+        font-family: "National2", sans-serif; font-weight: 500;
+        font-size: 0.6875rem; letter-spacing: 0.16em; text-transform: uppercase;
+        color: inherit; text-decoration: none; transition: opacity 0.2s;
+      }
+      .hdr-link:hover { opacity: 0.5; }
+      .hdr-signin {
+        font-family: "National2", sans-serif; font-weight: 500;
+        font-size: 0.625rem; letter-spacing: 0.16em; text-transform: uppercase;
+        color: inherit; text-decoration: none;
+        border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+        padding: 0.5rem 1rem; transition: border-color 0.2s, opacity 0.2s;
+      }
+      .hdr-signin:hover { border-color: currentColor; }
+
+      /* モバイル: JSなしのCSS <details> メニュー */
+      .hdr-menu { display: none; position: relative; }
+      .hdr-menu > summary {
+        list-style: none; cursor: pointer; display: inline-flex; color: inherit; padding: 0.25rem;
+      }
+      .hdr-menu > summary::-webkit-details-marker { display: none; }
+      .hdr-menu-panel {
+        position: absolute; right: 0; top: calc(100% + 10px); min-width: 210px;
+        display: flex; flex-direction: column;
+        background: var(--brand-bg); border: 1px solid var(--brand-line);
+      }
+      .hdr-menu-panel a {
+        font-family: "National2", sans-serif; font-weight: 500;
+        font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase;
+        color: var(--brand-ink); text-decoration: none;
+        padding: 0.9rem 1.1rem; border-bottom: 1px solid var(--brand-line-soft);
+      }
+      .hdr-menu-panel a:last-child { border-bottom: 0; }
+      .hdr-menu-panel a:hover { background: var(--brand-th-bg); }
+
+      @media (max-width: 768px) {
+        .hdr-nav { display: none; }
+        .hdr-menu { display: block; }
+      }
+
+      /* ── 本文 ── */
+      .wrap { max-width: 720px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+      h1 { font-size: 1.75rem; line-height: 1.4; margin: 0 0 1rem; font-weight: 500; }
+      h2 { font-size: 1.3rem; margin: 2.5rem 0 0.75rem; font-weight: 500; }
+      h3 { font-size: 1.06rem; margin: 1.75rem 0 0.5rem; font-weight: 500; }
       p { margin: 0 0 1rem; }
-      a { color: #0b63ce; }
       .direct-answer {
-        background: #f5f8ff;
-        border: 1px solid #d9e4fb;
-        border-left: 4px solid #0b63ce;
-        border-radius: 8px;
-        padding: 1rem 1.25rem;
-        margin: 0 0 2rem;
-        font-size: 1.02rem;
+        background: color-mix(in srgb, var(--brand-accent) 6%, var(--brand-bg));
+        border: 1px solid color-mix(in srgb, var(--brand-accent) 22%, transparent);
+        border-left: 3px solid var(--brand-accent);
+        padding: 1rem 1.25rem; margin: 0 0 2rem; font-size: 1.02rem;
       }
       .article-body :first-child { margin-top: 0; }
-      table.plans { width: 100%; border-collapse: collapse; margin: 0.75rem 0 0.5rem; }
-      table.plans th, table.plans td { border: 1px solid #e3e3e3; padding: 0.6rem 0.75rem; text-align: left; font-size: 0.95rem; }
-      table.plans th { background: #fafafa; font-weight: 600; }
-      .plan-price { font-weight: 700; white-space: nowrap; }
+
+      /* ── 表（ブランド: 白セル＋細罫線・角0・National2。ライト/ダーク両対応） ── */
+      table.plans, .article-body table {
+        width: 100%; border-collapse: collapse; margin: 0.75rem 0 0.5rem;
+        font-family: "National2", sans-serif; font-size: 0.95rem;
+      }
+      table.plans th, table.plans td,
+      .article-body th, .article-body td {
+        border: 1px solid var(--brand-line);
+        padding: 0.7rem 0.85rem; text-align: left; vertical-align: middle;
+      }
+      table.plans th, .article-body th {
+        background: var(--brand-th-bg); font-weight: 600;
+      }
+      .article-body table { display: block; overflow-x: auto; } /* 幅広表は横スクロール */
+      .plan-price { font-weight: 600; white-space: nowrap; }
       .buy-btn {
-        display: inline-block; padding: 0.45rem 0.9rem; border-radius: 999px;
-        background: #0b63ce; color: #fff; text-decoration: none; font-weight: 600; font-size: 0.9rem;
+        display: inline-block; padding: 0.45rem 1.1rem; border-radius: 999px;
+        background: var(--brand-accent); color: #fff; text-decoration: none;
+        font-weight: 500; font-size: 0.9rem; white-space: nowrap;
       }
-      .table-caption { font-size: 0.82rem; color: #666; margin: 0.25rem 0 2rem; }
+      .buy-btn:hover { opacity: 0.9; }
+      .table-caption { font-size: 0.82rem; color: var(--brand-muted); margin: 0.4rem 0 2rem; }
       .faq h3 { font-size: 1.02rem; margin-bottom: 0.25rem; }
-      .faq-a { color: #333; margin-bottom: 1.25rem; }
+      .faq-a { color: var(--brand-ink); opacity: 0.85; margin-bottom: 1.25rem; }
       .cta-row { margin: 2.5rem 0 1rem; }
-      @media (prefers-color-scheme: dark) {
-        body { color: #e8e8e8; background: #111; }
-        .direct-answer { background: #10203a; border-color: #234; border-left-color: #4a90e2; }
-        table.plans th { background: #1b1b1b; }
-        table.plans th, table.plans td { border-color: #333; }
-        .table-caption, .faq-a { color: #aaa; }
-        a { color: #6db3ff; }
-      }
     </style>
   </head>
   <body>
+    <header class="site-header">
+      <div class="hdr-inner">
+        <a class="hdr-logo" href="/app" aria-label="yah.mobile">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 268.23 90" role="img" aria-label="yah.mobile">
+            <g>
+              <path d="M132.45,66.4c-.75,2.76-3.39,4.26-6.1,3.51-2.76-.75-4.26-3.34-3.51-6.04.75-2.76,3.34-4.31,6.04-3.57,2.76.75,4.31,3.39,3.57,6.1Z"/>
+              <path d="M105.16,34.53c-3.77-.9-7.2-.08-10.14,2.85l3.58-15.43-4.33-1-1.77-.4-8.99,39.24,6.04,1.39,3.03-13.24c1.49-6.44,4.67-9.21,9.49-8.12,3.72.84,5.26,3.78,4.27,8.19l-3.73,16.14,6.21,1.39,3.87-16.89c1.74-7.55-.98-12.63-7.54-14.12Z"/>
+              <path d="M64.91,38.28c7.98.97,11.48,5.18,10.55,12.64l-2.22,18.09-6.15-.76.43-3.95c-2.29,2.7-5.65,3.99-9.62,3.5-5.79-.7-9.22-4.86-8.57-10.12.65-4.91,4.53-7.9,10.24-7.71l8.04.15c1.23.06,1.7-.3,1.82-1.13l.09-.59c.24-2.42-1.62-4.07-5.23-4.55-3.9-.44-6.73.89-7.8,3.59l-4.54-3.78c2.02-4.23,6.51-6.14,12.96-5.36ZM60.35,55.07c-2.68-.03-4.32,1.13-4.6,3.2-.26,2.3,1.31,3.94,4.26,4.28,4.32.55,8.02-2.06,8.47-5.84l.17-1.65h-8.31Z"/>
+              <path d="M4.79,41.58l-4.79-3.64C10.18,24.56,26.04,13.47,44.66,6.69,63.28-.09,82.57-1.78,98.96,1.91l-1.32,5.87c-15.28-3.45-33.36-1.83-50.91,4.56C29.17,18.73,14.28,29.11,4.79,41.58Z"/>
+              <polygon points="33.96 47.49 30.72 66.57 18.22 51.82 12.94 55.75 29.47 74.4 26.83 90 32.9 90 40.07 47.49 33.96 47.49"/>
+            </g>
+            <g>
+              <path d="M170.62,45.8c3.59,0,6.18,2.15,6.18,6.34v14.19h-4.9v-12.71c0-2.23-.88-3.67-3.23-3.67-2.07,0-3.91,1.43-3.91,5.1v11.28h-4.94v-12.71c0-2.23-.88-3.67-3.19-3.67-2.11,0-3.94,1.47-3.94,5.14v11.24h-4.9v-20.04h4.02l.6,3.87c.92-2.79,3.31-4.34,6.14-4.34s5.06,1.51,5.82,4.22c1.08-2.63,3.39-4.22,6.26-4.22Z"/>
+              <path d="M190.71,66.8c-5.66,0-9.53-3.79-9.53-10.52s3.87-10.48,9.53-10.48,9.52,3.79,9.52,10.48-3.83,10.52-9.52,10.52ZM190.71,49.47c-3.07,0-4.58,2.39-4.58,6.81s1.51,6.85,4.58,6.85,4.62-2.39,4.62-6.85-1.55-6.81-4.62-6.81Z"/>
+              <path d="M209.76,49.67c.76-2.35,3.15-3.87,5.9-3.87,5.38,0,8.25,4.38,8.25,10.36,0,6.3-3.35,10.64-8.57,10.64-2.87,0-5.22-1.51-5.94-4.06l-.56,3.59h-3.98v-28.77h4.9v12.11ZM209.76,57.72c0,3.83,2.15,5.38,4.3,5.38,2.87,0,4.82-2.31,4.82-6.85s-1.79-6.62-4.74-6.62c-2.23,0-4.38,1.75-4.38,5.58v2.51Z"/>
+              <path d="M230.93,43.37c-1.67,0-3.07-1.16-3.07-2.95s1.4-2.95,3.07-2.95,3.11,1.16,3.11,2.95-1.44,2.95-3.11,2.95ZM233.4,46.28v20.04h-4.9v-20.04h4.9Z"/>
+              <path d="M247.87,65.85c-.88.52-2.23.88-3.67.88-2.67,0-4.86-1.28-4.86-4.78v-24.39h4.9v23.47c0,1.24.56,1.79,1.63,1.79.56,0,1.08-.16,1.63-.52l.36,3.55Z"/>
+              <path d="M263.97,59.95l4.06,1.32c-1.08,3.91-4.42,5.54-8.13,5.54-5.78,0-9.45-3.75-9.45-10.36s3.67-10.64,9.49-10.64c5.46,0,8.29,3.83,8.29,8.69,0,1.04-.2,2.11-.4,2.67h-12.67c.12,3.71,1.87,5.9,4.78,5.9,2.03,0,3.47-.92,4.02-3.11ZM263.53,54.45c.04-.32.04-.72.04-1,0-2.23-1.27-4.1-3.71-4.1-2.63,0-4.3,1.91-4.62,5.1h8.29Z"/>
+            </g>
+          </svg>
+        </a>
+
+        <nav class="hdr-nav">
+          {NAV.map((n) => <a class="hdr-link" href={n.href}>{n.label}</a>)}
+          <a class="hdr-signin" href="/login">{ui.signIn}</a>
+        </nav>
+
+        <details class="hdr-menu">
+          <summary aria-label={ui.menu}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </summary>
+          <div class="hdr-menu-panel">
+            {NAV.map((n) => <a href={n.href}>{n.label}</a>)}
+            <a href="/login">{ui.signIn}</a>
+          </div>
+        </details>
+      </div>
+    </header>
+
     <main class="wrap">
       <slot />
     </main>

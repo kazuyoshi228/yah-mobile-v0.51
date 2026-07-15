@@ -8,6 +8,7 @@ import BaseLayout from "../../../layouts/BaseLayout.astro";
 import { getEsimGuides, stripTitlePrefix, type EsimGuide } from "../../../lib/esimGuides";
 import { getPlansByBindings, type Plan } from "../../../lib/plans";
 import { renderMarkdown } from "../../../lib/markdown";
+import { getUi, formatAsOf } from "../../../lib/ui-i18n";
 
 export async function getStaticPaths() {
   const guides = await getEsimGuides();
@@ -23,6 +24,7 @@ export async function getStaticPaths() {
 
 const { guide, lang } = Astro.props as { guide: EsimGuide; lang: string };
 const t = guide.translations[lang];
+const ui = getUi(lang);
 
 const displayTitle = stripTitlePrefix(t.title);
 const metaTitle = t.metaTitle || displayTitle;
@@ -33,11 +35,8 @@ const bodyHtml = renderMarkdown(t.body || "");
 const plans: Plan[] = await getPlansByBindings(guide.priceBindings ?? []);
 const yen = (n: number | null) => (n == null ? "—" : `¥${n.toLocaleString("ja-JP")}`);
 
-// 「◯年◯月◯日時点」キャプション
-const confirmedLabel = (() => {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(guide.confirmedDate || "");
-  return m ? `${m[1]}年${Number(m[2])}月${Number(m[3])}日時点` : null;
-})();
+// 料金基準日キャプション（言語別）
+const asOfLabel = formatAsOf(lang, guide.confirmedDate);
 
 // canonical(絶対) と hreflang
 const site = Astro.site ?? new URL("https://yah.mobi");
@@ -99,15 +98,15 @@ const jsonLd = [articleLd, ...(faqLd ? [faqLd] : [])];
     <div class="article-body" set:html={bodyHtml} />
 
     {plans.length > 0 && (
-      <section aria-label="プラン" class="plans-section">
-        <h2>プランと料金</h2>
+      <section aria-label={ui.plansTitle} class="plans-section">
+        <h2>{ui.plansTitle}</h2>
         <table class="plans">
           <thead>
             <tr>
-              <th>プラン</th>
-              <th>データ</th>
-              <th>有効期間</th>
-              <th>料金</th>
+              <th>{ui.colPlan}</th>
+              <th>{ui.colData}</th>
+              <th>{ui.colValidity}</th>
+              <th>{ui.colPrice}</th>
               <th></th>
             </tr>
           </thead>
@@ -116,20 +115,20 @@ const jsonLd = [articleLd, ...(faqLd ? [faqLd] : [])];
               <tr>
                 <td>{p.name}</td>
                 <td>{p.dataGb != null ? `${p.dataGb}GB` : "—"}</td>
-                <td>{p.validityDays != null ? `${p.validityDays}日` : "—"}</td>
+                <td>{p.validityDays != null ? `${p.validityDays}${lang === "ja" ? "日" : " days"}` : "—"}</td>
                 <td class="plan-price">{yen(p.priceJpy)}</td>
-                <td><a class="buy-btn" href={buyHref(p.id)}>購入</a></td>
+                <td><a class="buy-btn" href={buyHref(p.id)}>{ui.buy}</a></td>
               </tr>
             ))}
           </tbody>
         </table>
-        {confirmedLabel && <p class="table-caption">料金は{confirmedLabel}のものです。</p>}
+        {asOfLabel && <p class="table-caption">{asOfLabel}</p>}
       </section>
     )}
 
     {t.faq && t.faq.length > 0 && (
-      <section class="faq" aria-label="よくある質問">
-        <h2>よくある質問</h2>
+      <section class="faq" aria-label={ui.faqTitle}>
+        <h2>{ui.faqTitle}</h2>
         {t.faq.map((f) => (
           <div>
             <h3>{f.q}</h3>
@@ -141,7 +140,7 @@ const jsonLd = [articleLd, ...(faqLd ? [faqLd] : [])];
 
     {primaryPlanId && (
       <div class="cta-row">
-        <a class="buy-btn" href={buyHref(primaryPlanId)}>eSIMを購入する</a>
+        <a class="buy-btn" href={buyHref(primaryPlanId)}>{ui.buyCta}</a>
       </div>
     )}
   </article>
