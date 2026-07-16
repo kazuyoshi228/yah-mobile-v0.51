@@ -35,6 +35,13 @@ const NAV = [
   { label: ui.navChat, href: "/app#chat" },
   { label: ui.navContact, href: "/app#contact" },
 ];
+// 言語切替（各言語版URLへの素のリンク＝hreflangと同じ相互リンク・JSなし）。ラベルは各言語のnativeName。
+const LANGS = alternates.map((a) => ({
+  href: a.href,
+  lang: a.lang,
+  name: getUi(a.lang).nativeName,
+  current: a.lang === lang,
+}));
 ---
 <!doctype html>
 <html lang={lang}>
@@ -160,6 +167,31 @@ const NAV = [
       }
       .hdr-menu-panel a:last-child { border-bottom: 0; }
       .hdr-menu-panel a:hover { background: var(--brand-th-bg); }
+
+      /* 言語切替（デスクトップ=ドロップダウン / モバイル=パネル内リンク） */
+      .hdr-lang { position: relative; }
+      .hdr-lang > summary {
+        list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem;
+        font-family: "National2", sans-serif; font-weight: 500;
+        font-size: 0.6875rem; letter-spacing: 0.1em; text-transform: uppercase; color: inherit;
+      }
+      .hdr-lang > summary::-webkit-details-marker { display: none; }
+      .hdr-lang-panel {
+        position: absolute; right: 0; top: calc(100% + 12px); min-width: 150px;
+        display: flex; flex-direction: column;
+        background: var(--brand-bg); border: 1px solid var(--brand-line); z-index: 60;
+      }
+      .hdr-lang-panel a {
+        font-family: "National2", sans-serif; font-size: 0.82rem; color: var(--brand-ink);
+        text-decoration: none; padding: 0.55rem 0.9rem; border-bottom: 1px solid var(--brand-line-soft);
+      }
+      .hdr-lang-panel a:last-child { border-bottom: 0; }
+      .hdr-lang-panel a:hover { background: var(--brand-th-bg); }
+      .hdr-lang-panel a.is-current { font-weight: 600; color: var(--brand-accent); }
+      /* モバイル: パネル内の言語リンク（大文字化を解除・区切り線） */
+      .hdr-menu-panel a.hdr-menu-lang { text-transform: none; letter-spacing: 0.02em; font-size: 0.9rem; }
+      .hdr-menu-panel a.hdr-menu-lang.first { border-top: 2px solid var(--brand-line); }
+      .hdr-menu-panel a.is-current { color: var(--brand-accent); font-weight: 600; }
 
       @media (max-width: 768px) {
         .hdr-nav { display: none; }
@@ -309,6 +341,22 @@ const NAV = [
         <nav class="hdr-nav">
           {NAV.map((n) => <a class="hdr-link" href={n.href}>{n.label}</a>)}
           <a class="hdr-signin" href="/login">{ui.signIn}</a>
+          {LANGS.length > 1 && (
+            <details class="hdr-lang">
+              <summary aria-label="Language">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <circle cx="12" cy="12" r="9"></circle>
+                  <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"></path>
+                </svg>
+                <span>{ui.nativeName}</span>
+              </summary>
+              <div class="hdr-lang-panel">
+                {LANGS.map((l) => (
+                  <a href={l.href} hreflang={l.lang} lang={l.lang} class={l.current ? "is-current" : ""}>{l.name}</a>
+                ))}
+              </div>
+            </details>
+          )}
         </nav>
 
         <details class="hdr-menu">
@@ -322,6 +370,14 @@ const NAV = [
           <div class="hdr-menu-panel">
             {NAV.map((n) => <a href={n.href}>{n.label}</a>)}
             <a href="/login">{ui.signIn}</a>
+            {LANGS.length > 1 && LANGS.map((l, i) => (
+              <a
+                href={l.href}
+                hreflang={l.lang}
+                lang={l.lang}
+                class={`hdr-menu-lang${i === 0 ? " first" : ""}${l.current ? " is-current" : ""}`}
+              >{l.name}</a>
+            ))}
           </div>
         </details>
       </div>
