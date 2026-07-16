@@ -27,8 +27,8 @@ const DEFAULT_EXPECT: Expect = { author: true, fieldReport: false };
 
 // 記事別の期待。フィールドを magazine に載せたら true に上げる（＝以降その消失を検知）。
 const EXPECT: Record<string, Expect> = {
-  // author は以前 Yoshi が居た＝有るべき。fieldReport は magazine 掲載後に true へ。
-  "esim-chatgpt": { author: true, fieldReport: false },
+  // author・fieldReport とも magazine 掲載済み＝有るべき。欠落したらビルドで止める。
+  "esim-chatgpt": { author: true, fieldReport: true },
 };
 
 function hasAuthor(g: GuideLike): boolean {
