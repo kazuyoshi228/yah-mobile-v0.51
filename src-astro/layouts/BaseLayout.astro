@@ -340,7 +340,6 @@ const LANGS = alternates.map((a) => ({
 
         <nav class="hdr-nav">
           {NAV.map((n) => <a class="hdr-link" href={n.href}>{n.label}</a>)}
-          <a class="hdr-signin" href="/login">{ui.signIn}</a>
           {LANGS.length > 1 && (
             <details class="hdr-lang">
               <summary aria-label="Language">
@@ -369,7 +368,6 @@ const LANGS = alternates.map((a) => ({
           </summary>
           <div class="hdr-menu-panel">
             {NAV.map((n) => <a href={n.href}>{n.label}</a>)}
-            <a href="/login">{ui.signIn}</a>
             {LANGS.length > 1 && LANGS.map((l, i) => (
               <a
                 href={l.href}
