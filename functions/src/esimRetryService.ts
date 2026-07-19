@@ -225,6 +225,12 @@ export async function processPendingRetries(): Promise<{ processed: number; succ
         // New eSIM retry
         const detail = await getProvider(job.provider).createEsim({ providerPlanId: job.providerPlanId, orderId: job.orderId, transactionId: job.orderId });
         installBy = detail.expiryDate; // インストール期限（発行完了メールに記載）
+        // 本流（webhooks.fulfillEsim）と同一フィールドで作成する。
+        // 旧実装は status:"provisioning" のまま QR/期限/残量/プラン名が欠落し、
+        // リトライで回復した顧客のマイページ表示が不完全だった
+        const planQuery = await collections.plans.where("providerPlanId", "==", job.providerPlanId).limit(1).get();
+        const planDoc = planQuery.empty ? null : planQuery.docs[0];
+        const planData = (planDoc?.data() ?? {}) as { name?: string; dataGb?: number };
         await createEsimLink({
           orderId: job.orderId,
           userId: job.userId,
@@ -235,7 +241,15 @@ export async function processPendingRetries(): Promise<{ processed: number; succ
           lpaProfile: detail.lpaProfile ?? "",
           appleActivationUrl: detail.appleActivationUrl,
           androidActivationUrl: detail.androidActivationUrl,
-        });
+          qrCodeUrl: detail.qrCodeUrl ?? null,
+          dataRemainingMb: detail.dataRemainingMb ?? null,
+          dataTotalMb: detail.dataTotalMb ?? null,
+          expiryDate: detail.expiryDate ?? null,
+          status: "active",
+          planId: planDoc?.id ?? null,
+          planName: planData.name ?? null,
+          totalDataGb: planData.dataGb ?? null,
+        } as Parameters<typeof createEsimLink>[0]);
       }
 
       // Success

@@ -6,7 +6,7 @@ import * as logger from "firebase-functions/logger";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { requireAuth, zodError } from "../_helpers";
 import { collections, db, getEsimLinkByUuid, getOrderById, updateOrder, getUserByUid } from "../db";
-import { createCheckoutSession, validateOrigin } from "../stripe";
+import { createCheckoutSession, validateOrigin, getStripeClient } from "../stripe";
 import { enforceRateLimit } from "../rateLimit";
 import { assertProviderAvailable } from "../salesStopGuard";
 import { stripeSecretKey, stripeWebhookSecret, omaxClientId, omaxClientSecret } from "../secrets";
@@ -54,10 +54,20 @@ export const orderRetryPayment = onCall(
       const userEmail = user?.email ?? "";
       const userName = user?.name ?? "";
 
-      // 既存のStripeセッションが有効かチェック（あれば再利用）
+      // 既存のStripeセッションが本当に有効な場合のみ再利用する。
+      // Checkout セッションは24時間で失効するため、無条件再利用だと古い pending 注文の
+      // 「Complete Payment」が失効URLへ飛ばされ永久に決済できなかった
       if (order.checkoutUrl && order.stripeSessionId) {
-        logger.info(`[orderRetryPayment] Reusing existing checkout URL for order: ${orderId}`);
-        return { checkoutUrl: order.checkoutUrl };
+        try {
+          const session = await getStripeClient().checkout.sessions.retrieve(order.stripeSessionId);
+          if (session.status === "open") {
+            logger.info(`[orderRetryPayment] Reusing existing open checkout session for order: ${orderId}`);
+            return { checkoutUrl: order.checkoutUrl };
+          }
+          logger.info(`[orderRetryPayment] Stored session ${order.stripeSessionId} is ${session.status}; creating a new one`);
+        } catch (retrieveErr) {
+          logger.warn(`[orderRetryPayment] Failed to retrieve session ${order.stripeSessionId}; creating a new one:`, retrieveErr);
+        }
       }
 
       // 新しいStripe Checkoutセッションを作成

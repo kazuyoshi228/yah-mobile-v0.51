@@ -22,11 +22,14 @@ import {
 import {
   getOrderByStripeSessionId,
   getOrderByStripePaymentIntentId,
+  getOrderById,
   updateOrder,
   getEsimLinkByOrderId,
   getUserByUid,
   getUserById,
   createNotification,
+  createEsimActivation,
+  getEsimActivationByOrderId,
   collections,
   db,
   FsOrder,
@@ -35,6 +38,7 @@ import {
 } from "./db";
 import { getProvider } from "./providers/types";
 import { sendEmail, buildEsimReadyEmail, buildPurchaseReceivedEmail, buildRefundCompletedEmail } from "./mailer";
+import { notifyOwner } from "./adapters/notify";
 import { handleProvisioningFailure } from "./esimRetryService";
 import { esimAccessCode, esimSecretKey } from "./secrets";
 export const stripeWebhook = onRequest(
@@ -78,12 +82,23 @@ export const stripeWebhook = onRequest(
     // deliveries serialize on the event document. Already-completed events are
     // skipped; a previously-failed event (processed:false) is left claimable so
     // Stripe's retries can still recover it.
+    // in-flight 排他: claimedAt が新しい（=処理中の）イベントの並行配信は 500 で退け、
+    // Stripe の再送に委ねる（再送時点で processed:true なら skip、クラッシュならクレーム失効で再処理）。
+    // 2xx を返すと Stripe が再送を止めるため、処理中の重複には絶対に 2xx を返さない。
+    const CLAIM_TTL_MS = 120_000;
     const eventRef = collections.stripeEvents.doc(ev.id);
     let alreadyProcessed = false;
+    let inFlight = false;
     await db.runTransaction(async (t) => {
       const snap = await t.get(eventRef);
-      if (snap.exists && snap.data()?.processed === true) {
+      const data = snap.data();
+      if (snap.exists && data?.processed === true) {
         alreadyProcessed = true;
+        return;
+      }
+      const claimedAt = typeof data?.claimedAt === "number" ? data.claimedAt : 0;
+      if (snap.exists && data?.processed === false && Date.now() - claimedAt < CLAIM_TTL_MS) {
+        inFlight = true;
         return;
       }
       t.set(
@@ -92,7 +107,8 @@ export const stripeWebhook = onRequest(
           stripeEventId: ev.id,
           eventType: ev.type,
           processed: false,
-          createdAt: snap.data()?.createdAt ?? Date.now(),
+          claimedAt: Date.now(),
+          createdAt: data?.createdAt ?? Date.now(),
         },
         { merge: true },
       );
@@ -103,12 +119,19 @@ export const stripeWebhook = onRequest(
       res.json({ received: true, skipped: true });
       return;
     }
+    if (inFlight) {
+      logger.warn(`[stripeWebhook] Event ${ev.id} is being processed concurrently. Deferring to Stripe retry.`);
+      res.status(500).send("Event processing in flight");
+      return;
+    }
 
     try {
       if (ev.type === "checkout.session.completed") {
         await handleCheckoutCompleted(ev.data.object);
       } else if (ev.type === "charge.refunded") {
         await handleChargeRefunded(ev.data.object);
+      } else if (ev.type === "checkout.session.expired") {
+        await handleCheckoutExpired(ev.data.object);
       }
       // Update as processed successfully
       await eventRef.update({ processed: true });
@@ -139,12 +162,27 @@ async function handleChargeRefunded(charge: Record<string, unknown>) {
 
   const order = await getOrderByStripePaymentIntentId(paymentIntentId);
   if (!order) {
-    logger.error(`[handleChargeRefunded] Order not found for payment_intent: ${paymentIntentId}`);
-    return;
+    // return で握りつぶすと processed:true になり Stripe 再送でも永久に回復不能になる。
+    // throw → 500 → Stripe の再送に委ねる（書込レース等の一時的な未発見はこれで回復する）。
+    throw new Error(`[handleChargeRefunded] Order not found for payment_intent: ${paymentIntentId}`);
   }
 
   if (order.status === "refunded" || order.refundStatus === "refunded") {
     logger.info(`[handleChargeRefunded] Order ${order.id} already refunded. Skipping.`);
+    return;
+  }
+
+  // 部分返金は「全額返金」として確定しない（旧実装は amount_refunded 未検証で
+  // refunded 確定＋"refunded in full" メール送信だった）。記録と通知に留める。
+  const chargeAmount = typeof charge.amount === "number" ? charge.amount : null;
+  const amountRefunded = typeof charge.amount_refunded === "number" ? charge.amount_refunded : null;
+  if (chargeAmount !== null && amountRefunded !== null && amountRefunded < chargeAmount) {
+    logger.warn(`[handleChargeRefunded] Partial refund for order ${order.id}: ${amountRefunded}/${chargeAmount}`);
+    await updateOrder(order.id!, { partialRefundedJpy: amountRefunded } as unknown as Partial<FsOrder>);
+    await notifyOwner({
+      title: `⚠️ 部分返金を検知 — 注文 #${order.id}`,
+      content: `返金額: ¥${amountRefunded} / 決済額: ¥${chargeAmount}\n全額返金ではないため注文は refunded にしていません。対応方針を確認してください。`,
+    }).catch((err: unknown) => logger.error("[handleChargeRefunded] partial-refund notify error:", err));
     return;
   }
 
@@ -188,10 +226,16 @@ async function handleCheckoutCompleted(session: Record<string, unknown>) {
   }
 
   const stripeSessionId = session.id as string;
-  const order = await getOrderByStripeSessionId(stripeSessionId);
+  // セッションIDで見つからない場合は metadata.order_id でフォールバック
+  // （orderRetryPayment が新セッションを発行した直後の書込レース等に耐える）
+  let order = await getOrderByStripeSessionId(stripeSessionId);
   if (!order) {
-    logger.error(`[handleCheckoutCompleted] Order not found for session: ${stripeSessionId}`);
-    return;
+    logger.warn(`[handleCheckoutCompleted] Order not found by session ${stripeSessionId}; falling back to metadata.order_id=${orderId}`);
+    order = await getOrderById(orderId);
+  }
+  if (!order) {
+    // return だと processed:true になり Stripe 再送でも回復不能。throw → 500 → 再送に委ねる
+    throw new Error(`[handleCheckoutCompleted] Order not found for session ${stripeSessionId} / order_id ${orderId}`);
   }
 
   if (order.status === "fulfilled") {
@@ -260,6 +304,30 @@ async function handleCheckoutCompleted(session: Record<string, unknown>) {
   await fulfillEsim(order);
 }
 
+/**
+ * checkout.session.expired ハンドラ。決済離脱した pending 注文を cancelled に確定する。
+ * （旧実装は未処理のため、離脱注文が永久に pending のままマイページ最上位に居座っていた）
+ */
+async function handleCheckoutExpired(session: Record<string, unknown>) {
+  const orderId = (session.metadata as Record<string, string> | undefined)?.order_id;
+  if (!orderId) {
+    logger.info("[handleCheckoutExpired] No order_id in metadata. Ignoring.");
+    return;
+  }
+  const order = await getOrderById(orderId);
+  if (!order) {
+    logger.warn(`[handleCheckoutExpired] Order ${orderId} not found. Ignoring.`);
+    return;
+  }
+  // 失効イベント到着前に再決済で新セッションが発行されている場合は何もしない
+  if (order.status !== "pending" || (order.stripeSessionId && order.stripeSessionId !== session.id)) {
+    logger.info(`[handleCheckoutExpired] Order ${orderId} status=${order.status} (session mismatch or not pending). Skipping.`);
+    return;
+  }
+  await updateOrder(orderId, { status: "cancelled" });
+  logger.info(`[handleCheckoutExpired] Order ${orderId} cancelled (checkout session expired).`);
+}
+
 async function fulfillEsim(orderData: FsOrder) {
   const orderId = orderData.id;
   const userId = orderData.userId;
@@ -280,8 +348,24 @@ async function fulfillEsim(orderData: FsOrder) {
     if (isTopup) {
       const parentLinkUuid = orderData.esimLinkUuid;
       if (!parentLinkUuid) throw new Error("Topup order missing esimLinkUuid");
+      // 冪等ガード: topup 注文には orderId 一致の esim_link が存在しないため冒頭の
+      // getEsimLinkByOrderId が効かない。esim_activations の orderId で既付与を検出する
+      const existingActivation = await getEsimActivationByOrderId(orderId);
+      if (existingActivation) {
+        logger.info(`[fulfillEsim] Topup already applied for order ${orderId} (activation ${existingActivation.id}). Skipping.`);
+        await updateOrder(orderId, { status: "fulfilled" });
+        return;
+      }
       await getProvider(provider).topup({ providerRef: parentLinkUuid, providerPlanId: providerPlanId, transactionId: orderId });
       linkUuid = parentLinkUuid;
+      // 冪等ガードの根拠となる付与記録（orderId 付き）。失敗しても topup 自体は成立している
+      await createEsimActivation({
+        esimLinkId: parentLinkUuid,
+        bappyActivationUuid: orderId,
+        providerPlanId,
+        activationType: "topup",
+        orderId,
+      }).catch((err: unknown) => logger.error(`[fulfillEsim] Failed to record topup activation for ${orderId}:`, err));
       logger.info(`[fulfillEsim] Topup successful for link: ${linkUuid}`);
     } else {
       const detail = await getProvider(provider).createEsim({ providerPlanId: providerPlanId, orderId, transactionId: orderId });

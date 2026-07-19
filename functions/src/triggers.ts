@@ -29,6 +29,11 @@ const REGION = "asia-northeast1";
 // ─── 1. Auth onCreate Trigger (onUserCreated) ────────────────────────────────
 
 export const onUserCreated = auth.user().onCreate(async (user) => {
+  // 匿名認証ユーザー（= chat.yah.mobi の全訪問者。Auth はプロジェクト共有）には
+  // eSIM 側の users ドキュメントを作らない（loginMethod:"google" のゴミ doc 量産防止）
+  if (!user.email && (user.providerData?.length ?? 0) === 0) {
+    return;
+  }
   const db = getFirebaseDb();
   const userRef = db.collection("users").doc(user.uid);
   const now = Date.now();

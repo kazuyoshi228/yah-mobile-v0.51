@@ -15,6 +15,9 @@ vi.mock("./stripe", () => ({
 }));
 
 const mockGetOrderByStripeSessionId = vi.fn();
+const mockGetOrderByPaymentIntentId = vi.fn();
+const mockGetOrderById = vi.fn();
+const mockNotifyOwner = vi.fn().mockResolvedValue(undefined);
 const mockUpdateOrder = vi.fn();
 const mockEventRefGet = vi.fn();
 const mockEventRefSet = vi.fn();
@@ -23,10 +26,16 @@ const mockEventRefUpdate = vi.fn();
 vi.mock("./db", () => {
   return {
     getOrderByStripeSessionId: (...args: any[]) => mockGetOrderByStripeSessionId(...args),
+    getOrderByStripePaymentIntentId: (...args: any[]) => mockGetOrderByPaymentIntentId(...args),
+    getOrderById: (...args: any[]) => mockGetOrderById(...args),
     updateOrder: (...args: any[]) => mockUpdateOrder(...args),
     getEsimLinkByOrderId: vi.fn().mockResolvedValue(null),
     updateEsimLink: vi.fn(),
     getUserByUid: vi.fn().mockResolvedValue(null),
+    getUserById: vi.fn().mockResolvedValue(null),
+    createNotification: vi.fn().mockResolvedValue(undefined),
+    createEsimActivation: vi.fn().mockResolvedValue({ id: "act1", bappyActivationUuid: "x" }),
+    getEsimActivationByOrderId: vi.fn().mockResolvedValue(null),
     incrementSystemStats: vi.fn().mockResolvedValue(undefined),
     // Idempotency now uses db.runTransaction; the txn get/set delegate to the same mocks.
     db: {
@@ -49,6 +58,7 @@ vi.mock("./db", () => {
 });
 
 vi.mock("./bappy", () => ({ createLink: vi.fn(), addTopupPlan: vi.fn() }));
+vi.mock("./adapters/notify", () => ({ notifyOwner: (...a: any[]) => mockNotifyOwner(...a) }));
 vi.mock("./mailer", () => ({
   sendEmail: vi.fn(),
   buildEsimReadyEmail: vi.fn(() => ({ subject: "", html: "" })),
@@ -238,5 +248,54 @@ describe("stripeWebhook robustness tests", () => {
     );
     // 失敗時は pending_retry に落ちる
     expect(mockUpdateOrder).toHaveBeenCalledWith("order_topup", { status: "pending_retry" });
+  });
+
+  it("8. 処理中（in-flight）の並行配信は 500 を返し二重実行しない", async () => {
+    setupMockEvent("checkout.session.completed", "evt_inflight", {
+      id: "cs_x", amount_total: 1000, metadata: { order_id: "order_x" }
+    });
+    mockEventRefGet.mockResolvedValue({
+      exists: true,
+      data: () => ({ processed: false, claimedAt: Date.now() - 1000 }),
+    });
+
+    await (stripeWebhook as any)(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(mockGetOrderByStripeSessionId).not.toHaveBeenCalled();
+    expect(mockEventRefUpdate).not.toHaveBeenCalled();
+  });
+
+  it("9. 部分返金は refunded に確定せず記録とオーナー通知に留める", async () => {
+    setupMockEvent("charge.refunded", "evt_partial", {
+      payment_intent: "pi_1", amount: 1000, amount_refunded: 400,
+      refunds: { data: [{ id: "re_1" }] },
+    });
+    mockEventRefGet.mockResolvedValue({ exists: false, data: () => undefined });
+    mockGetOrderByPaymentIntentId.mockResolvedValue({
+      id: "order_p", userId: "u1", amountJpy: 1000, status: "fulfilled", refundStatus: "none",
+    });
+
+    await (stripeWebhook as any)(req, res);
+
+    const refundedCall = mockUpdateOrder.mock.calls.find((c: any[]) => c[1]?.status === "refunded");
+    expect(refundedCall).toBeUndefined();
+    const partialCall = mockUpdateOrder.mock.calls.find((c: any[]) => c[1]?.partialRefundedJpy === 400);
+    expect(partialCall).toBeTruthy();
+    expect(mockNotifyOwner).toHaveBeenCalled();
+    expect(mockEventRefUpdate).toHaveBeenCalledWith({ processed: true });
+  });
+
+  it("10. checkout.session.expired で pending 注文が cancelled になる", async () => {
+    setupMockEvent("checkout.session.expired", "evt_expired", {
+      id: "cs_old", metadata: { order_id: "order_e" },
+    });
+    mockEventRefGet.mockResolvedValue({ exists: false, data: () => undefined });
+    mockGetOrderById.mockResolvedValue({ id: "order_e", status: "pending", stripeSessionId: "cs_old" });
+
+    await (stripeWebhook as any)(req, res);
+
+    expect(mockUpdateOrder).toHaveBeenCalledWith("order_e", { status: "cancelled" });
+    expect(mockEventRefUpdate).toHaveBeenCalledWith({ processed: true });
   });
 });

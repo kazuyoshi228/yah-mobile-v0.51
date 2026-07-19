@@ -17,10 +17,12 @@ export interface NotifyOptions {
 }
 
 async function notifyViaForge(opts: NotifyOptions): Promise<boolean> {
-  const forgeApiUrl = process.env.BUILT_IN_FORGE_API_URL;
+  // URL は llm.ts と同じ既定にフォールバックする。BUILT_IN_FORGE_API_URL はどこにも
+  // 宣言されておらず、旧実装ではこのチャネルが恒久的に死んでいた（キーはバインド済みだった）
+  const forgeApiUrl = process.env.BUILT_IN_FORGE_API_URL || "https://forge.manus.im/";
   const forgeApiKey = process.env.BUILT_IN_FORGE_API_KEY;
-  if (!forgeApiUrl || !forgeApiKey) {
-    logger.warn("[notify/forge] BUILT_IN_FORGE_API_URL or BUILT_IN_FORGE_API_KEY not set");
+  if (!forgeApiKey) {
+    logger.warn("[notify/forge] BUILT_IN_FORGE_API_KEY not set");
     return false;
   }
   const normalizedBase = forgeApiUrl.endsWith("/") ? forgeApiUrl : `${forgeApiUrl}/`;

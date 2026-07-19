@@ -115,7 +115,7 @@ export default function TopupPage({ params }: { params: { esimLinkId: string } }
       setIsPurchasing(false);
       setPurchasingPlanId(null);
     }
-  }, [esimLink, t]);
+  }, [esimLink, t, i18n.language]);
 
   if (loading || esimLoading) {
     return (

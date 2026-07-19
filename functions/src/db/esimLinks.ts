@@ -44,6 +44,8 @@ export async function createEsimActivation(data: {
   bappyActivationUuid: string;
   providerPlanId: string;
   activationType: "initial" | "topup";
+  /** topup 冪等ガードの照会キー（fulfillEsim が orderId で既付与を検出する） */
+  orderId?: string | null;
   expiryDate?: number | null;
   dataRemainingMb?: number | null;
   planName?: string | null;
@@ -71,4 +73,14 @@ export async function getActiveActivationByEsimLinkId(
   if (snap.empty) return null;
   const d = snap.docs[0];
   return { id: d.id, ...d.data() } as { id: string; bappyActivationUuid: string; providerPlanId: string; status: string };
+}
+
+/** topup 冪等ガード: orderId で既存の付与記録を照会する（単一等価クエリ・インデックス不要） */
+export async function getEsimActivationByOrderId(
+  orderId: string,
+): Promise<{ id: string; activationType?: string } | null> {
+  const snap = await collections.esimActivations.where("orderId", "==", orderId).limit(1).get();
+  if (snap.empty) return null;
+  const d = snap.docs[0];
+  return { id: d.id, activationType: (d.data() as { activationType?: string }).activationType };
 }

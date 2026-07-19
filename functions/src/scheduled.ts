@@ -55,31 +55,54 @@ export const hungOrderMonitor = onSchedule(
     secrets: [forgeApiKey, slackWebhookUrl, gmailUser, gmailPass, ownerEmail],
   },
   async () => {
+    // createdAt/updatedAt の型ゆらぎ（旧注文=Timestamp / 現行=number）をミリ秒に正規化
+    const toMs = (v: unknown): number => {
+      if (typeof v === "number") return v;
+      const ts = v as { toMillis?: () => number } | null | undefined;
+      if (ts && typeof ts.toMillis === "function") return ts.toMillis();
+      return 0;
+    };
     try {
       const THIRTY_MIN = 30 * 60 * 1000;
-      const cutoff = Date.now() - THIRTY_MIN;
-      const snap = await db.collection("orders").where("status", "==", "provisioning").get();
-      const hung = snap.docs.filter((d) => {
-        const data = d.data() as { updatedAt?: number; createdAt?: number };
-        const ts = data.updatedAt ?? data.createdAt ?? 0;
-        return ts > 0 && ts < cutoff;
-      });
-      if (hung.length === 0) {
-        logger.info("[hungOrderMonitor] No hung provisioning orders.");
-        return;
+      const DAY = 24 * 60 * 60 * 1000;
+      const now = Date.now();
+
+      // 1) 実在する停滞状態を監視する: paid（発行が始まらない）/ pending_retry（リトライが進まない）。
+      //    旧実装はどのコードパスも設定しない "provisioning" を監視しており安全網が機能していなかった
+      const hung: string[] = [];
+      for (const status of ["paid", "pending_retry"] as const) {
+        const snap = await db.collection("orders").where("status", "==", status).get();
+        for (const d of snap.docs) {
+          const data = d.data() as { updatedAt?: unknown; createdAt?: unknown };
+          const ts = toMs(data.updatedAt) || toMs(data.createdAt);
+          if (ts > 0 && now - ts > THIRTY_MIN) {
+            hung.push(`${d.id} (${status}, updated ${new Date(ts).toISOString()})`);
+          }
+        }
       }
-      logger.warn(`[hungOrderMonitor] ${hung.length} hung provisioning order(s) detected.`);
-      const list = hung
-        .map((d) => {
-          const ts = (d.data() as { updatedAt?: number }).updatedAt ?? 0;
-          return `${d.id} (updated ${ts ? new Date(ts).toISOString() : "?"})`;
-        })
-        .join("\n")
-        .slice(0, 1500);
-      await notifyOwner({
-        title: `⚠️ 宙吊り注文 ${hung.length}件（provisioning が30分以上）`,
-        content: list,
-      });
+      if (hung.length > 0) {
+        logger.warn(`[hungOrderMonitor] ${hung.length} hung order(s) detected.`);
+        await notifyOwner({
+          title: `⚠️ 宙吊り注文 ${hung.length}件（paid/pending_retry が30分以上停滞）`,
+          content: hung.join("\n").slice(0, 1500),
+        });
+      } else {
+        logger.info("[hungOrderMonitor] No hung orders.");
+      }
+
+      // 2) 決済離脱の pending を24時間で自動失効（checkout.session.expired の補完。
+      //    旧 Timestamp 型 createdAt の残骸もここで掃除される）
+      const pendingSnap = await db.collection("orders").where("status", "==", "pending").get();
+      let expired = 0;
+      for (const d of pendingSnap.docs) {
+        const data = d.data() as { createdAt?: unknown };
+        const ts = toMs(data.createdAt);
+        if (ts > 0 && now - ts > DAY) {
+          await d.ref.update({ status: "cancelled", updatedAt: now });
+          expired++;
+        }
+      }
+      if (expired > 0) logger.info(`[hungOrderMonitor] Expired ${expired} stale pending order(s) (>24h).`);
     } catch (err) {
       logger.error("[hungOrderMonitor] Error:", err);
     }

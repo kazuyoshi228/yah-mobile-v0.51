@@ -58,7 +58,7 @@ export default function OrderDetailPage({ params }: { params: { orderId: string 
       },
     );
     return unsub;
-  }, [orderId, isAuthenticated]);
+  }, [orderId, isAuthenticated, loading]);
 
   const [esimLink, setEsimLink] = useState<FsEsimLink | null>(null);
   const [esimLoading, setEsimLoading] = useState(true);

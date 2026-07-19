@@ -475,18 +475,6 @@ const zhTW = {
     "ogTitle": "yah.mobile — 日本旅遊 eSIM",
     "ogDescription": "在日本即時上網。QR 碼寄送至您的電子郵件，無需實體 SIM 卡。使用 NTT docomo 網路。"
   },
-  "deviceCheck": {
-    "title": "確認相容性。",
-    "subtitle": "確認您的裝置是否支援eSIM。",
-    "selectMaker": "選擇品牌",
-    "selectModel": "選擇型號",
-    "compatible": "相容",
-    "notCompatible": "不相容",
-    "checkCarrier": "請洽電信業者",
-    "compatibleMsg": "您的裝置支援eSIM，可以購買。",
-    "notCompatibleMsg": "此裝置不支援eSIM，需要使用實體SIM卡。",
-    "checkCarrierMsg": "eSIM支援取決於您的電信業者，購買前請先確認。"
-  }
 } as const;
 
 export default zhTW;
